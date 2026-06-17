@@ -1,0 +1,2645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>康梦诗内衣供应链 - 销售开单系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'SimSun', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            letter-spacing: 4px;
+            font-weight: bold;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 3px solid #c41e3a;
+            padding: 0 20px;
+        }
+
+        .nav-tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 16px;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -3px;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .nav-tab:hover {
+            color: #c41e3a;
+        }
+
+        .nav-tab.active {
+            color: #c41e3a;
+            border-bottom-color: #c41e3a;
+            font-weight: bold;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #c41e3a;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: #c41e3a;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #a01829;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #c41e3a;
+            box-shadow: 0 0 0 3px rgba(196,30,58,0.1);
+        }
+
+        /* Table Styles */
+        .table-scroll-container {
+            max-height: 500px;
+            overflow: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+
+        .table-scroll-container table {
+            margin: 0;
+            border: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            border: 1px solid #333;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* Sticky header for product table */
+        #productTable thead th,
+        #currentOrderTable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f8f8f8;
+        }
+
+        th {
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: #fff8f8;
+        }
+
+        /* Import Section */
+        .import-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+
+        .import-area:hover {
+            border-color: #c41e3a;
+            background: #fff8f8;
+        }
+
+        .import-area input[type="file"] {
+            display: none;
+        }
+
+        .import-icon {
+            font-size: 48px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        /* Customer Cards */
+        .customer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .customer-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 18px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .customer-card:hover {
+            border-color: #c41e3a;
+            box-shadow: 0 4px 12px rgba(196,30,58,0.15);
+        }
+
+        .customer-name {
+            font-size: 17px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .customer-phone {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .customer-balance {
+            margin-top: 10px;
+            padding: 8px;
+            background: #fff3cd;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        /* Order Form */
+        .order-header {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .order-header-item label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .order-header-item span {
+            font-size: 16px;
+            color: #333;
+        }
+
+        /* Sales Invoice Style (like screenshot) */
+        .invoice-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 25px;
+            background: white;
+            border: 1px solid #000;
+        }
+
+        .invoice-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .invoice-company {
+            text-align: center;
+            flex: 1;
+        }
+
+        .invoice-company h1 {
+            font-size: 28px;
+            letter-spacing: 6px;
+            font-family: 'SimSun', serif;
+        }
+
+        .invoice-company h2 {
+            font-size: 18px;
+            font-weight: normal;
+            margin-top: 5px;
+        }
+
+        .invoice-no {
+            text-align: right;
+            min-width: 180px;
+        }
+
+        .invoice-no .label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .invoice-no .value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .invoice-subno {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .invoice-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .invoice-meta-item strong {
+            color: #000;
+        }
+
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .invoice-table th,
+        .invoice-table td {
+            border: 1px solid #333;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .invoice-table th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+
+        .invoice-total-row td {
+            font-weight: bold;
+            background: #f9f9f9;
+        }
+
+        .invoice-summary {
+            margin-top: 15px;
+            font-size: 14px;
+            line-height: 2;
+        }
+
+        .summary-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .summary-line.total {
+            font-weight: bold;
+            font-size: 16px;
+            border-top: 2px solid #333;
+            padding-top: 10px;
+            margin-top: 5px;
+        }
+
+        .amount-red {
+            color: #c41e3a;
+            font-weight: bold;
+        }
+
+        .invoice-footer {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .footer-note {
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .sign-row {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .sign-item span {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 1px solid #333;
+            text-align: center;
+        }
+
+        /* Manual Add Product Form */
+        .manual-add-form {
+            background: #f8f9fa;
+            border: 2px dashed #c41e3a;
+            border-radius: 10px;
+            padding: 20px 25px;
+            margin-top: 20px;
+        }
+
+        .manual-add-form .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .manual-add-form .form-row .form-group {
+            margin-bottom: 0;
+            min-width: 180px;
+        }
+
+        /* Quick Order Input Row */
+        .quick-order-row {
+            background: #fff8f5;
+            border: 2px solid #c41e3a;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+
+        .quick-order-row input {
+            font-size: 15px !important;
+            font-weight: bold;
+            border-color: #c41e3a !important;
+        }
+
+        .quick-order-hint {
+            color: #c41e3a;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        /* Match dropdown list for SKU search */
+        .match-list {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .match-item {
+            padding: 7px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .match-item:hover {
+            background: #fff0f0;
+        }
+
+        .match-item:last-child {
+            border-bottom: none;
+        }
+
+        .match-exact {
+            background: #e8f5e9;
+            border-left: 3px solid #28a745;
+        }
+
+        .match-sku {
+            font-weight: bold;
+            color: #c41e3a;
+            min-width: 100px;
+        }
+
+        .match-price {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .match-sup {
+            color: #888;
+            font-size: 12px;
+            flex: 1;
+        }
+            position: relative;
+        }
+
+        .product-search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .product-search-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        .product-search-item:hover {
+            background: #fff8f8;
+        }
+
+        .product-search-item .sku {
+            font-weight: bold;
+            color: #c41e3a;
+        }
+
+        .product-search-item .price {
+            color: #28a745;
+            float: right;
+        }
+
+        .product-search-item .supplier {
+            color: #888;
+            font-size: 12px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 550px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        /* Print Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .printable, .printable * {
+                visibility: visible;
+            }
+            .printable {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                padding: 20px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* Hidden sections */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Action buttons row */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-danger { background: #dc3545; color: white; }
+        .badge-success { background: #28a745; color: white; }
+        .badge-warning { background: #ffc107; color: #333; }
+        .badge-info { background: #17a2b8; color: white; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .order-header { grid-template-columns: 1fr; }
+            .invoice-meta { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .sign-row { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header no-print">
+    <h1>🩷 康梦诗内衣供应链</h1>
+    <p>销售开单管理系统</p>
+</div>
+
+<!-- Navigation -->
+<div class="nav-tabs no-print">
+    <div class="nav-tab active" onclick="switchTab('products')">📦 商品管理</div>
+    <div class="nav-tab" onclick="switchTab('customers')">👥 客户管理</div>
+    <div class="nav-tab" onclick="switchTab('order')">📋 开具销售单</div>
+    <div class="nav-tab" onclick="switchTab('history')">📊 订单记录</div>
+    <div class="nav-tab" onclick="switchTab('data')">💾 数据管理</div>
+</div>
+
+<div class="container">
+
+    <!-- ==================== 商品管理 ==================== -->
+    <div id="tab-products" class="tab-content active">
+        <div class="panel">
+            <h2 class="panel-title">商品数据导入与管理</h2>
+
+            <!-- Import Area -->
+            <div class="import-area" id="importArea" onclick="document.getElementById('fileInput').click()">
+                <div class="import-icon">📁</div>
+                <p style="font-size: 16px; margin-bottom: 8px;">点击或拖拽上传商品表格文件</p>
+                <p style="font-size: 13px; color: #888;">支持 Excel (.xlsx/.xls) 或 CSV 文件 | 格式：款号、价格、供货商</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFileImport(event)">
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid" id="productStats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalProducts">0</div>
+                    <div class="stat-label">商品总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSuppliers">0</div>
+                    <div class="stat-label">供货商数量</div>
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="action-bar">
+                <input type="text" class="form-control" id="productSearch" placeholder="🔍 搜索款号..." style="max-width:300px;" oninput="renderProductTable()">
+            </div>
+
+            <!-- Product Table with Sticky Header & Scroll -->
+            <div class="table-scroll-container" id="productTableContainer">
+                <table id="productTable">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>款号</th>
+                            <th>价格（元）</th>
+                            <th>供货商</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Manual Add Product -->
+            <div class="manual-add-form">
+                <h3 style="font-size:16px;color:#c41e3a;margin-bottom:12px;">✏️ 手动添加商品</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>* 款号</label>
+                        <input type="text" class="form-control" id="manualSku" placeholder="输入款号">
+                    </div>
+                    <div class="form-group">
+                        <label>* 价格（元）</label>
+                        <input type="number" class="form-control" id="manualPrice" placeholder="输入价格" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>供货商</label>
+                        <input type="text" class="form-control" id="manualSupplier" placeholder="输入供货商（可选）">
+                    </div>
+                    <div style="align-self:flex-end;padding-bottom:2px;">
+                        <button class="btn btn-success" onclick="addManualProduct()" id="btnManualAdd">➕ 添加保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 客户管理 ==================== -->
+    <div id="tab-customers" class="tab-content">
+        <div class="panel">
+            <h2 class="panel-title">客户信息管理</h2>
+
+            <div class="action-bar">
+                <button class="btn btn-primary" onclick="showCustomerModal()">➕ 新增客户</button>
+                <span class="badge badge-info" id="customerCount">共 0 位客户</span>
+            </div>
+
+            <div class="customer-grid" id="customerGrid"></div>
+        </div>
+    </div>
+
+    <!-- ==================== 开具销售单 ==================== -->
+    <div id="tab-order" class="tab-content">
+        <div class="panel no-print">
+            <h2 class="panel-title">开具新销售单</h2>
+
+            <!-- Customer Selection & Meta Info -->
+            <div class="order-header">
+                <div class="order-header-item">
+                    <label>👤 选择客户：</label>
+                    <select class="form-control" id="orderCustomer" onchange="onCustomerSelect()">
+                        <option value="">-- 请选择客户 --</option>
+                    </select>
+                </div>
+                <div class="order-header-item">
+                    <label>🧾 销售单号：</label>
+                    <span id="orderNo" style="color:#c41e3a;font-weight:bold;">自动生成</span>
+                </div>
+                <div class="order-header-item">
+                    <label>📅 开单日期：</label>
+                    <span id="orderDate"></span>
+                </div>
+            </div>
+
+            <!-- Customer Balance Info -->
+            <div id="balanceInfo" style="display:none;background:#fff3cd;padding:15px;border-radius:8px;margin-bottom:15px;">
+                <strong>💰 该客户账户信息：</strong><br>
+                前次结欠：<span class="amount-red" id="prevBalanceDisplay">¥0.00</span> 元 |
+                累计消费：<span id="totalConsumedDisplay">¥0.00</span> 元 |
+                累计来款：<span id="totalPaymentDisplay">¥0.00</span> 元
+            </div>
+
+            <!-- Quick Add Row: Input SKU + Quantity, Enter to auto-match price -->
+            <div class="quick-order-row" id="quickOrderRow">
+                <div class="quick-order-hint">💡 输入款号和数量，按回车自动匹配单价并加入订单 | 数量填负数为退货</div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;">
+                        <input type="text" class="form-control" id="quickSkuInput"
+                               placeholder="输入款号..." style="font-weight:bold;">
+                    </div>
+                    <div style="width:100px;">
+                        <input type="number" class="form-control" id="quickQtyInput"
+                               placeholder="数量(退货填负数)" value="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleQuickAdd()" id="btnQuickAdd">➕ 加入订单</button>
+                    <span id="quickMatchInfo" style="color:#28a745;font-size:13px;font-weight:bold;"></span>
+                </div>
+            </div>
+
+            <!-- Current Order Items Table -->
+            <table id="currentOrderTable">
+                <thead>
+                    <tr>
+                        <th>商标</th>
+                        <th>款号</th>
+                        <th>款式类型</th>
+                        <th>数量</th>
+                        <th>单价</th>
+                        <th>金额</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="currentOrderBody"></tbody>
+                <tfoot>
+                    <tr class="invoice-total-row">
+                        <td colspan="3"><strong>合 计：</strong></td>
+                        <td id="orderTotalQty">0件</td>
+                        <td></td>
+                        <td id="orderTotalAmount" class="amount-red">¥0.00</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Payment Info -->
+            <div id="paymentSection" style="display:none;margin-top:20px;">
+                <h3 style="margin-bottom:15px;color:#c41e3a;">💳 来款与结算</h3>
+                <div style="display:flex;gap:15px;align-items:center;margin-bottom:15px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>本次来款金额（元）：</label>
+                        <input type="number" class="form-control" id="paymentAmount" value="0" step="0.01"
+                               onchange="updateFinalBalance()" style="width:180px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>收款方式：</label>
+                        <select class="form-control" id="paymentMethod" style="width:130px;" onchange="updateFinalBalance()">
+                            <option value="现金">现金</option>
+                            <option value="微信">微信</option>
+                            <option value="支付宝">支付宝</option>
+                            <option value="银行转账">银行转账</option>
+                            <option value="其它">其它</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success" onclick="saveReceipt()" id="btnPrintReceipt" disabled>💾 保存收款单</button>
+                </div>
+
+                <div style="background:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #c41e3a;">
+                    <div class="summary-line">
+                        <span>本单金额：<strong class="amount-red" id="thisOrderAmount">¥0.00</strong> 元</span>
+                    </div>
+                    <div class="summary-line">
+                        <span>前次结欠：<strong class="amount-red" id="prevBalanceSummary">¥0.00</strong> 元</span>
+                        <span>收款金额：<strong style="color:#28a745;" id="paymentAmountDisplay">¥0.00</strong> 元</span>
+                    </div>
+                    <div class="summary-line total">
+                        <span>结欠金额（大写）：<strong id="finalBalanceChinese">零元整</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-bar" style="margin-top:20px;">
+                <button class="btn btn-success" onclick="saveOrderOnly()" id="btnSaveOnly" disabled>✅ 保存</button>
+                <button class="btn btn-primary" onclick="printCurrentInvoice()" id="btnPrintOnly" disabled>🖨️ 打印</button>
+                <button class="btn btn-secondary" onclick="clearCurrentOrder()">🗑️ 清空当前订单</button>
+            </div>
+
+            <!-- Receipt Preview Area - 收款单保存后在此处显示 -->
+            <div id="receiptPrintArea" style="display:none;margin-top:25px;border:2px solid #28a745;border-radius:8px;padding:20px;background:#f0fff0;"></div>
+        </div>
+
+        <!-- Printable Invoice Preview - 销售单保存后在此处显示 -->
+        <div id="printArea" class="printable" style="display:none;margin-top:25px;"></div>
+    </div>
+
+    <!-- ==================== 订单记录 ==================== -->
+    <div id="tab-history" class="tab-content">
+        <div class="panel">
+            <h2 class="panel-title">历史订单记录</h2>
+
+            <div class="action-bar">
+                <select class="form-control" id="filterCustomer" onchange="renderHistoryTable()" style="max-width:250px;">
+                    <option value="">所有客户</option>
+                </select>
+                <input type="date" class="form-control" id="filterDateFrom" onchange="renderHistoryTable()" style="max-width:160px;">
+                <span style="align-self:center;">至</span>
+                <input type="date" class="form-control" id="filterDateTo" onchange="renderHistoryTable()" style="max-width:160px;">
+                <button class="btn btn-info" onclick="exportHistory()">📥 导出记录</button>
+            </div>
+
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>类型</th>
+                        <th>单号</th>
+                        <th>日期</th>
+                        <th>客户名称</th>
+                        <th>金额</th>
+                        <th>收款/来款</th>
+                        <th>结欠余额</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== 数据管理 ==================== -->
+    <div id="tab-data" class="tab-content">
+        <div class="panel">
+            <h2 class="panel-title">💾 数据备份与迁移</h2>
+            <p style="color:#666;margin-bottom:20px;font-size:14px;">
+                数据目前保存在当前浏览器的本地存储中。换电脑或换浏览器时，需要先导出备份，再在新浏览器导入。
+            </p>
+
+            <!-- Data Overview -->
+            <div class="stats-grid" style="margin-bottom:25px;">
+                <div class="stat-card" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+                    <div class="stat-value" id="dataProductCount">0</div>
+                    <div class="stat-label">商品数量</div>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#f093fb,#f5576c);">
+                    <div class="stat-value" id="dataCustomerCount">0</div>
+                    <div class="stat-label">客户数量</div>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#4facfe,#00f2fe);">
+                    <div class="stat-value" id="dataOrderCount">0</div>
+                    <div class="stat-label">订单数量</div>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#fa709a,#fee140);">
+                    <div class="stat-value" id="dataPaymentCount">0</div>
+                    <div class="stat-label">收款记录</div>
+                </div>
+                <div class="stat-card" style="background:linear-gradient(135deg,#43e97b,#38f9d7);">
+                    <div class="stat-value" id="dataLastBackup">-</div>
+                    <div class="stat-label">上次导出</div>
+                </div>
+            </div>
+
+            <!-- Export / Import -->
+            <div style="display:flex;gap:30px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:300px;border:2px solid #28a745;border-radius:10px;padding:25px;background:#f8fff8;">
+                    <h3 style="color:#28a745;margin-bottom:15px;">📤 导出数据（备份）</h3>
+                    <p style="font-size:13px;color:#666;margin-bottom:15px;">将所有商品、客户、订单数据导出为一个文件，保存到电脑上。</p>
+                    <button class="btn btn-success" onclick="exportAllData()">📥 导出全部数据</button>
+                    <p style="margin-top:10px;font-size:12px;color:#999;">提示：建议每天下班前导出一次备份</p>
+                </div>
+
+                <div style="flex:1;min-width:300px;border:2px solid #17a2b8;border-radius:10px;padding:25px;background:#f8ffff;">
+                    <h3 style="color:#17a2b8;margin-bottom:15px;">📥 导入数据（恢复）</h3>
+                    <p style="font-size:13px;color:#666;margin-bottom:15px;">从之前导出的备份文件恢复数据。<strong>注意：导入会覆盖当前浏览器中的数据！</strong></p>
+                    <input type="file" id="importDataFile" accept=".json" onchange="importAllData(event)" style="display:none;">
+                    <button class="btn btn-info" onclick="document.getElementById('importDataFile').click()">📂 选择备份文件并导入</button>
+                    <p style="margin-top:10px;font-size:12px;color:#999;">仅接受本系统导出的 .json 备份文件</p>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div style="margin-top:25px;border:2px solid #dc3545;border-radius:10px;padding:20px;background:#fff5f5;">
+                <h3 style="color:#dc3545;margin-bottom:10px;">⚠️ 危险操作</h3>
+                <p style="font-size:13px;color:#666;margin-bottom:12px;">以下操作不可逆，请谨慎使用：</p>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <button class="btn btn-danger" onclick="clearAllData()">🗑️ 清空所有数据</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Customer Modal -->
+<div class="modal-overlay" id="customerModal">
+    <div class="modal">
+        <h3 class="modal-title" id="modalTitle">新增客户</h3>
+        <input type="hidden" id="editCustomerId">
+        <div class="form-group">
+            <label>* 客户名称：</label>
+            <input type="text" class="form-control" id="custName" placeholder="请输入客户名称">
+        </div>
+        <div class="form-group">
+            <label>手机/微信：</label>
+            <input type="text" class="form-control" id="custPhone" placeholder="请输入手机或微信号">
+        </div>
+        <div class="form-group">
+            <label>地址：</label>
+            <input type="text" class="form-control" id="custAddress" placeholder="请输入地址">
+        </div>
+        <div class="action-bar" style="justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="closeCustomerModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveCustomer()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="orderDetailModal">
+    <div class="modal" style="max-width:850px;">
+        <h3 class="modal-title">订单详情</h3>
+        <div id="orderDetailContent"></div>
+        <div class="action-bar" style="justify-content:flex-end;margin-top:20px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('orderDetailModal').classList.remove('show')">关闭</button>
+            <button class="btn btn-primary" id="btnReprint" onclick="reprintOrder()">重新打印</button>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// =============================================
+// Data Store (localStorage persistence)
+// =============================================
+const DB_KEYS = {
+    products: 'kms_products',
+    customers: 'kms_customers',
+    orders: 'kms_orders',
+    payments: 'kms_payments',
+    orderCounter: 'kms_order_counter'
+};
+
+function loadData(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+}
+function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+function getCounter() { return parseInt(localStorage.getItem(DB_KEYS.orderCounter) || '0'); }
+function incCounter() { const n = getCounter() + 1; localStorage.setItem(DB_KEYS.orderCounter, n); return n; }
+
+// =============================================
+// Tab Switching
+// =============================================
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+
+    if (tabId === 'products') renderProductTable();
+    if (tabId === 'customers') renderCustomerGrid();
+    if (tabId === 'order') {
+        initOrderPage();
+        setTimeout(() => document.getElementById('quickSkuInput')?.focus(), 150);
+    }
+    if (tabId === 'history') renderHistoryTable();
+    if (tabId === 'data') refreshDataStats();
+}
+
+// =============================================
+// Product Management
+// =============================================
+let allProducts = [];
+
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+            const imported = [];
+            jsonData.forEach(row => {
+                // Try to find columns by common names
+                const keys = Object.keys(row);
+                let sku = row['款号'] || row['SKU'] || row['货号'] || row['编号'] || row[Object.keys(row)[0]];
+                let price = parseFloat(row['价格'] || row['单价'] || row['进价'] || row['Price'] || row[Object.keys(row)[1]]) || 0;
+                let supplier = String(row['供货商'] || row['供应商'] || row['厂家'] || row['Supplier'] || row[Object.keys(row)[2]] || '');
+
+                if (sku && String(sku).trim()) {
+                    imported.push({
+                        sku: String(sku).trim(),
+                        price: parseFloat(price),
+                        supplier: supplier.trim()
+                    });
+                }
+            });
+
+            if (imported.length === 0) {
+                alert('⚠️ 未识别到有效商品数据！请确保表格包含「款号」「价格」「供货商」列。');
+                return;
+            }
+
+            // Merge with existing
+            const existing = loadData(DB_KEYS.products);
+            const existingSkus = new Set(existing.map(p => p.sku));
+            let addedCount = 0;
+            imported.forEach(p => {
+                if (!existingSkus.has(p.sku)) {
+                    existing.push(p);
+                    existingSkus.add(p.sku);
+                    addedCount++;
+                }
+            });
+            saveData(DB_KEYS.products, existing);
+
+            alert(`✅ 导入成功！新增 ${addedCount} 件商品，共 ${existing.length} 件。`);
+            renderProductTable();
+        } catch(err) {
+            alert('❌ 文件解析失败：' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = '';
+}
+
+function renderProductTable() {
+    allProducts = loadData(DB_KEYS.products);
+    const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
+
+    const filtered = allProducts.filter(p =>
+        p.sku.toLowerCase().includes(search) ||
+        p.supplier.toLowerCase().includes(search)
+    );
+
+    document.getElementById('totalProducts').textContent = allProducts.length;
+    const suppliers = [...new Set(allProducts.map(p => p.supplier).filter(s => s))];
+    document.getElementById('totalSuppliers').textContent = suppliers.length;
+
+    const tbody = document.getElementById('productTableBody');
+    tbody.innerHTML = filtered.map((p, i) => `
+        <tr id="prod-row-${i}">
+            <td>${i + 1}</td>
+            <td class="prod-sku-cell" id="prod-sku-${i}"><strong>${escapeHtml(p.sku)}</strong></td>
+            <td class="prod-price-cell" id="prod-price-${i}">¥${p.price.toFixed(2)}</td>
+            <td class="prod-supplier-cell" id="prod-supplier-${i}">${escapeHtml(p.supplier)}</td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="editProductRow(${i})">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${escapeHtml(p.sku)}')">删除</button>
+            </td>
+        </tr>
+    `).join('');
+    // Store filtered list for editing reference
+    window._filteredProducts = filtered;
+}
+
+function deleteProduct(sku) {
+    if (!confirm(`确定删除商品 ${sku} 吗？`)) return;
+    let products = loadData(DB_KEYS.products);
+    products = products.filter(p => p.sku !== sku);
+    saveData(DB_KEYS.products, products);
+    renderProductTable();
+}
+
+function editProductRow(idx) {
+    const p = window._filteredProducts[idx];
+    if (!p) return;
+
+    const skuCell = document.getElementById('prod-sku-' + idx);
+    const priceCell = document.getElementById('prod-price-' + idx);
+    const supplierCell = document.getElementById('prod-supplier-' + idx);
+
+    // Replace display with input fields
+    skuCell.innerHTML = `<input type="text" class="form-control" id="edit-sku-${idx}" value="${escapeHtml(p.sku)}" style="padding:4px 8px;width:120px;">`;
+    priceCell.innerHTML = `<input type="number" class="form-control" id="edit-price-${idx}" value="${p.price}" step="0.01" style="padding:4px 8px;width:100px;">`;
+    supplierCell.innerHTML = `<input type="text" class="form-control" id="edit-supplier-${idx}" value="${escapeHtml(p.supplier)}" style="padding:4px 8px;width:120px;">`;
+
+    // Change buttons to save/cancel
+    const row = document.getElementById('prod-row-' + idx);
+    const actionCell = row.cells[4];
+    actionCell.innerHTML = `
+        <button class="btn btn-sm btn-success" onclick="saveProductEdit(${idx})">保存</button>
+        <button class="btn btn-sm btn-secondary" onclick="renderProductTable()">取消</button>
+    `;
+
+    // Focus price field (most commonly edited)
+    document.getElementById('edit-price-' + idx).focus();
+    document.getElementById('edit-price-' + idx).select();
+}
+
+function saveProductEdit(idx) {
+    const oldP = window._filteredProducts[idx];
+    if (!oldP) return;
+
+    const newSku = document.getElementById('edit-sku-' + idx).value.trim();
+    const newPrice = parseFloat(document.getElementById('edit-price-' + idx).value);
+    const newSupplier = document.getElementById('edit-supplier-' + idx).value.trim();
+
+    if (!newSku) { alert('款号不能为空！'); return; }
+    if (isNaN(newPrice) || newPrice <= 0) { alert('请输入有效价格！'); return; }
+
+    let products = loadData(DB_KEYS.products);
+    const targetIdx = products.findIndex(p => p.sku === oldP.sku);
+
+    if (targetIdx === -1) { alert('商品未找到！'); renderProductTable(); return; }
+
+    // If SKU changed, check for duplicate
+    if (newSku !== oldP.sku && products.some(p => p.sku === newSku)) {
+        alert(`款号「${newSku}」已存在，不能重复！`);
+        return;
+    }
+
+    products[targetIdx].sku = newSku;
+    products[targetIdx].price = newPrice;
+    products[targetIdx].supplier = newSupplier;
+    saveData(DB_KEYS.products, products);
+
+    renderProductTable();
+}
+
+function addManualProduct() {
+    const sku = document.getElementById('manualSku').value.trim();
+    const price = parseFloat(document.getElementById('manualPrice').value);
+    const supplier = document.getElementById('manualSupplier').value.trim();
+
+    if (!sku) { alert('请输入款号！'); return; }
+    if (isNaN(price) || price <= 0) { alert('请输入有效价格！'); return; }
+
+    // Check for duplicate SKU
+    let products = loadData(DB_KEYS.products);
+    const existing = products.find(p => p.sku === sku);
+
+    if (existing) {
+        if (!confirm(`款号「${sku}」已存在（¥${existing.price.toFixed(2)}），是否覆盖价格？`)) return;
+        existing.price = price;
+        existing.supplier = supplier || existing.supplier;
+        saveData(DB_KEYS.products, products);
+        alert('✅ 商品已更新！');
+    } else {
+        products.push({ sku, price, supplier });
+        saveData(DB_KEYS.products, products);
+        alert('✅ 商品添加成功！');
+    }
+
+    // Clear form and refresh
+    document.getElementById('manualSku').value = '';
+    document.getElementById('manualPrice').value = '';
+    document.getElementById('manualSupplier').value = '';
+    renderProductTable();
+}
+
+// =============================================
+// Customer Management
+// =============================================
+function showCustomerModal(customerId = null) {
+    document.getElementById('modalTitle').textContent = customerId ? '编辑客户' : '新增客户';
+    document.getElementById('editCustomerId').value = customerId || '';
+    document.getElementById('custName').value = '';
+    document.getElementById('custPhone').value = '';
+    document.getElementById('custAddress').value = '';
+
+    if (customerId) {
+        const customers = loadData(DB_KEYS.customers);
+        const c = customers.find(x => x.id === customerId);
+        if (c) {
+            document.getElementById('custName').value = c.name;
+            document.getElementById('custPhone').value = c.phone || '';
+            document.getElementById('custAddress').value = c.address || '';
+        }
+    }
+    document.getElementById('customerModal').classList.add('show');
+}
+
+function closeCustomerModal() {
+    document.getElementById('customerModal').classList.remove('show');
+}
+
+function saveCustomer() {
+    const name = document.getElementById('custName').value.trim();
+    if (!name) { alert('请输入客户名称！'); return; }
+
+    const customers = loadData(DB_KEYS.customers);
+    const editId = document.getElementById('editCustomerId').value;
+
+    const customerData = {
+        name: name,
+        phone: document.getElementById('custPhone').value.trim(),
+        address: document.getElementById('custAddress').value.trim(),
+        balance: 0,
+        totalSpent: 0,
+        totalPaid: 0
+    };
+
+    if (editId) {
+        const idx = customers.findIndex(c => c.id === editId);
+        if (idx !== -1) {
+            customerData.id = editId;
+            customerData.balance = customers[idx].balance;
+            customerData.totalSpent = customers[idx].totalSpent;
+            customerData.totalPaid = customers[idx].totalPaid;
+            customers[idx] = customerData;
+        }
+    } else {
+        customerData.id = 'C' + Date.now();
+        customers.push(customerData);
+    }
+
+    saveData(DB_KEYS.customers, customers);
+    closeCustomerModal();
+    renderCustomerGrid();
+    updateCustomerSelect();
+}
+
+function renderCustomerGrid() {
+    const customers = loadData(DB_KEYS.customers);
+    document.getElementById('customerCount').textContent = `共 ${customers.length} 位客户`;
+
+    const grid = document.getElementById('customerGrid');
+    if (customers.length === 0) {
+        grid.innerHTML = '<p style="color:#999;text-align:center;padding:40px;">暂无客户数据，请点击上方按钮新增。</p>';
+        return;
+    }
+
+    grid.innerHTML = customers.map(c => `
+        <div class="customer-card" onclick="showCustomerModal('${c.id}')">
+            <div class="customer-name">${escapeHtml(c.name)}</div>
+            <div class="customer-phone">📱 ${escapeHtml(c.phone || '-')} 📍 ${escapeHtml(c.address || '-')}</div>
+            <div class="customer-balance">
+                💰 结欠余额：<strong style="${c.balance>0?'color:#c41e3a;':c.balance<0?'color:#28a745;':''}">¥${c.balance.toFixed(2)}</strong> ${c.balance > 0 ? '(客户欠我)' : c.balance < 0 ? '(我欠客户)' : '(已结清)'}
+                <br>
+                累计消费：¥${(c.totalSpent||0).toFixed(2)} | 累计来款：¥${(c.totalPaid||0).toFixed(2)}
+                ${c.totalPaid > 0 ? `<br><span style="font-size:12px;color:${c.balance<=0?'#28a745':'#e0a800'};">最近收款：查看详情</span>` : ''}
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();quickNewOrder('${c.id}')">快速开单</button>
+                <button class="btn btn-sm btn-success" onclick="event.stopPropagation();showCustomerLedger('${c.id}','${escapeHtml(c.name)}')">📊 流水</button>
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCustomer('${c.id}')">删除</button>
+            </div>
+        </div>
+    `).join('');
+
+    // Update history filter select
+    const filterSel = document.getElementById('filterCustomer');
+    const curVal = filterSel.value;
+    filterSel.innerHTML = '<option value="">所有客户</option>' +
+        customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    filterSel.value = curVal;
+}
+
+function deleteCustomer(id) {
+    if (!confirm('确定删除此客户吗？关联的订单和收款记录将保留。')) return;
+    let customers = loadData(DB_KEYS.customers);
+    customers = customers.filter(c => c.id !== id);
+    saveData(DB_KEYS.customers, customers);
+    renderCustomerGrid();
+    updateCustomerSelect();
+}
+
+// =============================================
+// Customer Ledger (客户交易流水)
+// =============================================
+function showCustomerLedger(customerId, customerName) {
+    const orders = loadData(DB_KEYS.orders).filter(o => o.customerId === customerId);
+    const payments = loadData(DB_KEYS.payments).filter(p => p.customerId === customerId);
+
+    // Build unified timeline
+    let items = [];
+
+    orders.forEach(o => {
+        items.push({
+            type: 'order',
+            date: o.date,
+            no: o.orderNo,
+            desc: `销售单 · ${o.totalQty || 0}件商品`,
+            amount: +o.totalAmount,      // 销售额（正）
+            payment: +(o.payment||0),     // 随单收款（正）
+            balance: o.finalBalance       // 结欠后余额
+        });
+    });
+
+    payments.forEach(p => {
+        items.push({
+            type: 'payment',
+            date: p.date + (p.time ? ' ' + p.time : ''),
+            no: p.receiptNo,
+            desc: `收款 · ${p.paymentMethod}`,
+            amount: +(p.orderAmount||0),   // 关联销售金额
+            payment: +p.paymentAmount,      // 收款金额
+            balance: p.newBalance          // 收款后余额
+        });
+    });
+
+    // Sort by date ascending (oldest first for ledger)
+    items.sort((a, b) => a.date.localeCompare(b.date));
+
+    let totalSales = 0, totalPaid = 0;
+    items.forEach(it => { totalSales += it.amount; totalPaid += it.payment; });
+
+    const html = `
+        <div style="max-height:70vh;overflow-y:auto;padding:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3 style="margin:0;color:#c41e3a;">📊 ${escapeHtml(customerName)} - 交易流水</h3>
+                <button onclick="document.getElementById('ledgerModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999;">&times;</button>
+            </div>
+            <div style="display:flex;gap:20px;margin-bottom:15px;background:#f8f9fa;padding:12px;border-radius:8px;">
+                <span>📦 累计销售：<strong class="amount-red">¥${totalSales.toFixed(2)}</strong></span>
+                <span>💰 累计收款：<strong style="color:#28a745;">¥${totalPaid.toFixed(2)}</strong></span>
+                <span>💵 当前结欠：<strong style="${totalSales-totalPaid>0?'color:#c41e3a;':'color:#28a745;'}">¥${(totalSales-totalPaid).toFixed(2)}</strong></span>
+            </div>
+
+            ${items.length === 0 ?
+                '<p style="color:#999;text-align:center;padding:30px;">暂无交易记录</p>' :
+                `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead><tr style="background:#f0f0f0;">
+                        <th style="padding:8px;border-bottom:1px solid #ddd;">日期</th>
+                        <th style="padding:8px;border-bottom:1px solid #ddd;">类型</th>
+                        <th style="padding:8px;border-bottom:1px solid #ddd;">单号</th>
+                        <th style="padding:8px;border-bottom:1px solid #ddd;">说明</th>
+                        <th style="padding:8px;border-bottom:1px solid #ddd;text-align:right;">销售金额</th>
+                        <th style="padding:8px;border-bottom:1px solid #ddd;text-align:right;">收款</th>
+                        <th style="padding:8px;border-bottom:1px solid #ddd;text-align:right;">余额</th>
+                    </tr></thead>
+                    <tbody>${items.map((it,i) => `
+                        <tr style="${it.type==='payment'?'background:#f0fdf4;':''}">
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.date}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;">
+                                ${it.type==='order'
+                                    ? '<span style="background:#c41e3a;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;">销售</span>'
+                                    : '<span style="background:#28a745;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;">收款</span>'}
+                            </td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;"><strong>${it.no}</strong></td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;color:#666;">${it.desc}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${it.amount>0?'¥'+it.amount.toFixed(2):'-'}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;${it.payment>0?'color:#28a745;':''}">${it.payment>0?'+¥'+it.payment.toFixed(2):'-'}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;${it.balance>0?'color:#c41e3a;':it.balance<0?'color:#28a745;':''}">¥${it.balance.toFixed(2)}</td>
+                        </tr>`).join('')}</tbody>
+                </table>`
+            }
+        </div>`;
+
+    // Create modal if not exists
+    let modal = document.getElementById('ledgerModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'ledgerModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;';
+        document.body.appendChild(modal);
+
+        // Close on backdrop click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+    }
+
+    modal.innerHTML = `<div style="background:#fff;border-radius:12px;width:90%;max-width:900px;max-height:85vh;box-shadow:0 20px 60px rgba(0,0,0,0.3);">${html}</div>`;
+    modal.style.display = 'flex';
+}
+
+function quickNewOrder(customerId) {
+    switchTab('order');
+    setTimeout(() => {
+        document.getElementById('orderCustomer').value = customerId;
+        onCustomerSelect();
+    }, 100);
+}
+
+function updateCustomerSelect() {
+    const customers = loadData(DB_KEYS.customers);
+    const sel = document.getElementById('orderCustomer');
+    const curVal = sel.value;
+    sel.innerHTML = '<option value="">-- 请选择客户 --</option>' +
+        customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    sel.value = curVal;
+}
+
+// =============================================
+// Order / Sales Invoice
+// =============================================
+let currentOrderItems = [];
+
+function initOrderPage() {
+    updateCustomerSelect();
+    generateOrderNo();
+    document.getElementById('orderDate').textContent = new Date().toLocaleDateString('zh-CN');
+
+    // Quick order input: type SKU + quantity, Enter to auto-match
+    const skuInput = document.getElementById('quickSkuInput');
+    const qtyInput = document.getElementById('quickQtyInput');
+    const matchInfo = document.getElementById('quickMatchInfo');
+
+    // Real-time match preview on SKU input
+    skuInput.oninput = function() {
+        const qRaw = this.value.trim();
+        const q = qRaw.toUpperCase();
+        if (!q) {
+            matchInfo.innerHTML = '';
+            matchInfo.style.display = 'none';
+            delete matchInfo.dataset.matchedSku;
+            return;
+        }
+
+        const products = loadData(DB_KEYS.products);
+        const exact = products.find(p => p.sku.toUpperCase() === q);
+
+        // Threshold: Chinese chars need only 1; numbers/letters need >= 2
+        const isChinese = /[\u4e00-\u9fff]/.test(qRaw);
+        const minLen = isChinese ? 1 : 2;
+        if (q.length < minLen && !exact) {
+            matchInfo.innerHTML = `<span style="color:#999;">继续输入...（${isChinese?'汉字已可匹配':'至少输入2位'}）</span>`;
+            matchInfo.style.display = 'block';
+            delete matchInfo.dataset.matchedSku;
+            return;
+        }
+
+        // Find fuzzy matches
+        let fuzzy = products.filter(p =>
+            p.sku.toUpperCase().includes(q) || p.supplier.toUpperCase().includes(q)
+        );
+        // Remove exact from fuzzy list
+        if (exact) fuzzy = fuzzy.filter(p => p.sku !== exact.sku);
+
+        matchInfo.style.display = 'block';
+
+        if (exact && fuzzy.length === 0) {
+            // Exact match only
+            matchInfo.innerHTML = `<span style="color:#28a745;">✅ 匹配成功 | ¥${exact.price.toFixed(2)} | ${escapeHtml(exact.supplier)}</span>`;
+            matchInfo.dataset.matchedSku = exact.sku;
+            matchInfo.dataset.matchedPrice = exact.price;
+            matchInfo.dataset.matchedSupplier = exact.supplier;
+        } else if (fuzzy.length > 0 || exact) {
+            // Multiple matches — list all as clickable items
+            let html = '';
+            if (!exact) {
+                html += `<div style="color:#666;font-size:12px;margin-bottom:6px;">找到 ${fuzzy.length} 个相似款号，点击选择：</div>`;
+            } else {
+                html += `<div style="color:#28a745;margin-bottom:6px;">✅ 精确匹配：<strong>${exact.sku}</strong> ¥${exact.price.toFixed(2)} <small>(${exact.supplier})</small></div>`;
+            }
+            html += '<div class="match-list">';
+            const displayList = exact ? [exact, ...fuzzy] : fuzzy;
+            displayList.forEach((p, idx) => {
+                const isExact = p.sku.toUpperCase() === q;
+                html += `<div class="match-item${isExact ? ' match-exact' : ''}"
+                             onclick="selectMatchItem('${escapeJs(p.sku)}', '${p.price}', '${escapeJs(p.supplier)}')">
+                    <span class="match-sku">${isExact ? '✅ ' : ''}${escapeHtml(p.sku)}</span>
+                    <span class="match-price">¥${p.price.toFixed(2)}</span>
+                    <span class="match-sup">${escapeHtml(p.supplier)}</span>
+                </div>`;
+            });
+            html += '</div>';
+            matchInfo.innerHTML = html;
+            // Auto-select first for Enter key fallback
+            const first = displayList[0];
+            matchInfo.dataset.matchedSku = first.sku;
+            matchInfo.dataset.matchedPrice = first.price;
+            matchInfo.dataset.matchedSupplier = first.supplier;
+        } else {
+            matchInfo.innerHTML = `<span style="color:#dc3545;">❌ 未找到「${escapeHtml(qRaw)}」</span>`;
+            delete matchInfo.dataset.matchedSku;
+        }
+    };
+
+    // Enter key to add
+    function doQuickAdd(e) {
+        if (e && e.key === 'Enter') e.preventDefault();
+        handleQuickAdd();
+        skuInput.focus();
+        skuInput.select();
+    }
+
+    skuInput.onkeydown = function(e) {
+        if (e.key === 'Enter') { doQuickAdd(e); }
+        // Tab key also triggers add
+        if (e.key === 'Tab') { doQuickAdd(e); }
+    };
+
+    qtyInput.onkeydown = function(e) {
+        if (e.key === 'Enter') { doQuickAdd(e); }
+    };
+}
+
+// User clicks a specific match from the list
+function selectMatchItem(sku, price, supplier) {
+    const matchInfo = document.getElementById('quickMatchInfo');
+    const skuInput = document.getElementById('quickSkuInput');
+    const qtyInput = document.getElementById('quickQtyInput');
+
+    // Set matched data
+    matchInfo.dataset.matchedSku = sku;
+    matchInfo.dataset.matchedPrice = price;
+    matchInfo.dataset.matchedSupplier = supplier;
+
+    // Fill SKU input with exact match
+    skuInput.value = sku;
+
+    // Auto-trigger add
+    handleQuickAdd();
+}
+
+function generateOrderNo() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const seq = String(incCounter()).padStart(5, '0');
+    document.getElementById('orderNo').textContent = `KMSD${y}${m}${d}${seq}`;
+}
+
+function onCustomerSelect() {
+    const custId = document.getElementById('orderCustomer').value;
+    const balanceInfo = document.getElementById('balanceInfo');
+    const paymentSection = document.getElementById('paymentSection');
+
+    // 切换客户时清空之前的预览
+    document.getElementById('printArea').style.display = 'none';
+    document.getElementById('printArea').innerHTML = '';
+    document.getElementById('receiptPrintArea').style.display = 'none';
+    document.getElementById('receiptPrintArea').innerHTML = '';
+
+    if (!custId) {
+        balanceInfo.style.display = 'none';
+        paymentSection.style.display = 'none';
+        return;
+    }
+
+    balanceInfo.style.display = 'block';
+    paymentSection.style.display = 'block';
+
+    const customers = loadData(DB_KEYS.customers);
+    const c = customers.find(x => x.id === custId);
+    if (c) {
+        document.getElementById('prevBalanceDisplay').textContent = `¥${c.balance.toFixed(2)}`;
+        document.getElementById('totalConsumedDisplay').textContent = `¥${c.totalSpent.toFixed(2)}`;
+        document.getElementById('totalPaymentDisplay').textContent = `¥${c.totalPaid.toFixed(2)}`;
+    }
+
+    updateFinalBalance();
+    checkCanSave();
+}
+
+function handleQuickAdd() {
+    const skuInput = document.getElementById('quickSkuInput');
+    const qtyInput = document.getElementById('quickQtyInput');
+    const matchInfo = document.getElementById('quickMatchInfo');
+
+    const skuQuery = skuInput.value.trim();
+    if (!skuQuery) {
+        alert('请输入款号！');
+        skuInput.focus();
+        return;
+    }
+
+    const qty = parseInt(qtyInput.value) || 0;
+    if (qty === 0) { qtyInput.focus(); return; }
+
+    // Try to match from product database
+    const products = loadData(DB_KEYS.products);
+    const exactMatch = products.find(p => p.sku.toUpperCase() === skuQuery.toUpperCase());
+    let matchedSku, matchedPrice, matchedSupplier;
+
+    if (exactMatch) {
+        matchedSku = exactMatch.sku;
+        matchedPrice = exactMatch.price;
+        matchedSupplier = exactMatch.supplier;
+    } else if (matchInfo.dataset.matchedSku) {
+        // Use the fuzzy match result
+        matchedSku = matchInfo.dataset.matchedSku;
+        matchedPrice = parseFloat(matchInfo.dataset.matchedPrice);
+        matchedSupplier = matchInfo.dataset.matchedSupplier;
+    } else {
+        // No match found - ask user if they want to manually enter price
+        const manualPriceStr = prompt(`未找到款号「${skuQuery}」！\n请手动输入单价（元）：`);
+        if (manualPriceStr === null || manualPriceStr === '') return; // cancelled
+        const manualPrice = parseFloat(manualPriceStr);
+        if (isNaN(manualPrice) || manualPrice <= 0) { alert('价格无效，已取消。'); return; }
+        matchedSku = skuQuery;
+        matchedPrice = manualPrice;
+        matchedSupplier = '(手动录入)';
+    }
+
+    // Add or update in order
+    addToOrderItem(matchedSku, matchedPrice, matchedSupplier, qty);
+
+    // Reset input
+    skuInput.value = '';
+    matchInfo.innerHTML = '';
+    matchInfo.style.display = 'none';
+    delete matchInfo.dataset.matchedSku;
+    delete matchInfo.dataset.matchedPrice;
+    delete matchInfo.dataset.matchedSupplier;
+}
+
+function addToOrderItem(sku, price, supplier, qty) {
+    // Check if already exists in current order
+    const existingIdx = currentOrderItems.findIndex(item => item.sku === sku);
+    if (existingIdx !== -1) {
+        currentOrderItems[existingIdx].qty += qty;
+    } else {
+        currentOrderItems.push({
+            sku: sku,
+            price: parseFloat(price),
+            supplier: supplier,
+            qty: qty,
+            brand: '',
+            style: '',
+            remark: ''
+        });
+    }
+    renderCurrentOrder();
+}
+
+function renderCurrentOrder() {
+    const tbody = document.getElementById('currentOrderBody');
+    tbody.innerHTML = currentOrderItems.map((item, i) => {
+        const amount = item.qty * item.price;
+        return `
+            <tr>
+                <td><input type="text" class="form-control" style="padding:4px 8px;width:80px;"
+                       value="${escapeHtml(item.brand)}"
+                       onchange="updateOrderItem(${i},'brand',this.value)" placeholder="商标"></td>
+                <td><strong>${escapeHtml(item.sku)}</strong></td>
+                <td style="color:#666;">内衣</td>
+                <td><input type="number" class="form-control" style="padding:4px 8px;width:70px;text-align:center;${item.qty<0?'color:#dc3545;font-weight:bold;':''}"
+                       value="${item.qty}"
+                       onchange="updateOrderItem(${i},'qty',parseInt(this.value)||0)"></td>
+                <td>¥${item.price.toFixed(2)}</td>
+                <td><strong style="${amount<0?'color:#dc3545;':''}">¥${amount.toFixed(2)}</strong></td>
+                <td><input type="text" class="form-control" style="padding:4px 8px;width:120px;"
+                       value="${escapeHtml(item.remark)}"
+                       onchange="updateOrderItem(${i},'remark',this.value)" placeholder="备注"></td>
+                <td><button class="btn btn-sm btn-danger" onclick="removeOrderItem(${i})">删除</button></td>
+            </tr>`;
+    }).join('');
+
+    // Totals
+    const totalQty = currentOrderItems.reduce((sum, it) => sum + it.qty, 0);
+    const totalAmt = currentOrderItems.reduce((sum, it) => sum + it.qty * it.price, 0);
+    document.getElementById('orderTotalQty').innerHTML = (totalQty < 0 ? '<span style="color:#dc3545;font-weight:bold;">' + totalQty + '件(含退货)</span>' : totalQty + '件');
+    document.getElementById('orderTotalAmount').textContent = '¥' + totalAmt.toFixed(2);
+    document.getElementById('thisOrderAmount').textContent = '¥' + totalAmt.toFixed(2);
+
+    checkCanSave();
+    updateFinalBalance();
+}
+
+function updateOrderItem(idx, field, value) {
+    if (field === 'qty' && value === 0) value = 1;
+    currentOrderItems[idx][field] = value;
+    renderCurrentOrder();
+}
+
+function removeOrderItem(idx) {
+    currentOrderItems.splice(idx, 1);
+    renderCurrentOrder();
+}
+
+function clearCurrentOrder() {
+    if (currentOrderItems.length > 0 && !confirm('确定清空当前订单吗？')) return;
+    currentOrderItems = [];
+    document.getElementById('paymentAmount').value = 0;
+    document.getElementById('otherAmount').value = 0;
+    renderCurrentOrder();
+    updateFinalBalance();
+}
+
+function updateFinalBalance() {
+    const custId = document.getElementById('orderCustomer').value;
+    const thisAmt = currentOrderItems.reduce((sum, it) => sum + it.qty * it.price, 0);
+    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+
+    let prevBal = 0;
+    if (custId) {
+        const customers = loadData(DB_KEYS.customers);
+        const c = customers.find(x => x.id === custId);
+        if (c) prevBal = c.balance;
+    }
+
+    const finalBalance = prevBal + thisAmt - payment;
+
+    document.getElementById('prevBalanceSummary').textContent = '¥' + prevBal.toFixed(2);
+    document.getElementById('paymentAmountDisplay').textContent = '¥' + payment.toFixed(2);
+    document.getElementById('finalBalanceChinese').textContent = numberToChinese(Math.abs(finalBalance)) +
+        (finalBalance < 0 ? ' (多付)' : '');
+    checkCanSave();
+}
+
+function checkCanSave() {
+    const hasCustomer = !!document.getElementById('orderCustomer').value;
+    const hasItems = currentOrderItems.length > 0;
+    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const canOrder = hasCustomer && hasItems;
+    document.getElementById('btnSaveOnly').disabled = !canOrder;
+    document.getElementById('btnPrintOnly').disabled = !canOrder;
+    document.getElementById('btnPrintReceipt').disabled = !(hasCustomer && payment > 0);
+}
+
+// =============================================
+// Save Receipt (保存收款单 - 入账+打印)
+// =============================================
+function saveReceipt() {
+    const custId = document.getElementById('orderCustomer').value;
+    if (!custId) { alert('请先选择客户！'); return; }
+
+    const customers = loadData(DB_KEYS.customers);
+    const cIdx = customers.findIndex(x => x.id === custId);
+    if (cIdx === -1) { alert('客户不存在！'); return; }
+    const c = customers[cIdx];
+
+    const thisAmt = currentOrderItems.reduce((s, it) => s + it.qty * it.price, 0);
+    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    if (payment <= 0) { alert('来款金额必须大于 0！'); return; }
+    const method = document.getElementById('paymentMethod').value;
+    const prevBalance = c.balance;
+    // 收款后新余额：前欠 + 本单(如有) - 来款
+    const newBalance = prevBalance + thisAmt - payment;
+
+    const now = new Date();
+    const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    const timeStr = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+
+    // Generate receipt number
+    const receiptNo = 'KHZJ' + Date.now().toString().slice(-10);
+
+    // ========== SAVE PAYMENT RECORD ==========
+    const paymentRecord = {
+        id: 'P' + Date.now(),
+        receiptNo: receiptNo,
+        date: dateStr,
+        time: timeStr,
+        customerId: custId,
+        customerName: c.name,
+        phone: c.phone || '',
+        address: c.address || '',
+        prevBalance: prevBalance,      // 收款前余额
+        paymentAmount: payment,         // 本次收款
+        paymentMethod: method,          // 收款方式
+        orderAmount: thisAmt,           // 关联的本单金额（可能为0）
+        newBalance: newBalance,        // 收款后余额
+        remark: ''
+    };
+
+    // Save payment record
+    let payments = loadData(DB_KEYS.payments);
+    payments.unshift(paymentRecord);   // newest first
+    saveData(DB_KEYS.payments, payments);
+
+    // Update customer balance & stats
+    c.balance = newBalance;
+    c.totalPaid = (c.totalPaid || 0) + payment;
+    customers[cIdx] = c;
+    saveData(DB_KEYS.customers, customers);
+
+    // Clear payment field after saving
+    document.getElementById('paymentAmount').value = '0';
+
+    // Refresh UI
+    updateCustomerInfoDisplay();
+    updateFinalBalance();
+    checkCanSave();
+
+    // Generate receipt preview IN-PAGE (like sales order invoice)
+    generateReceiptPreview(paymentRecord);
+
+    alert(`✅ 收款单已保存入账！\n\n收款金额：¥${payment.toFixed(2)} 元\n客户余额更新为：¥${newBalance.toFixed(2)} 元\n\n下方已显示收据单预览。`);
+}
+
+// =============================================
+// Generate Receipt Preview IN-PAGE
+// =============================================
+function generateReceiptPreview(rec) {
+    const area = document.getElementById('receiptPrintArea');
+    area.style.display = 'block';
+    const dateStr = rec.date + ' ' + (rec.time || '');
+
+    area.innerHTML = `
+    <div class="invoice-container" style="margin-top:20px;border:1px solid #000;padding:25px;max-width:700px;margin-left:auto;margin-right:auto;">
+        <div style="text-align:center;margin-bottom:15px;">
+            <h2 style="font-size:24px;font-weight:bold;letter-spacing:3px;color:#c41e3a;">康梦诗内衣供应链</h2>
+            <div style="font-size:12px;color:#666;">地址：广东省汕头市</div>
+        </div>
+        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:15px;letter-spacing:2px;color:#28a745;">
+            ${escapeHtml(rec.customerName)}（收款单）
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;">
+            <tr><td style="border:none;padding:4px 0;"><strong>单号：</strong>${rec.receiptNo}</td><td style="border:none;text-align:right;padding:4px 0;"><strong>日期：</strong>${dateStr}</td></tr>
+        </table>
+
+        <table style="width:100%;border-collapse:collapse;font-size:14px;" class="receipt-table">
+            <tr><td colspan="2" style="border:1px solid #333;padding:8px;background:#f8f9fa;"><strong>客户名称：</strong>${escapeHtml(rec.customerName)}&nbsp;&nbsp;&nbsp;&nbsp;<strong>收款帐号：</strong>${escapeHtml(rec.paymentMethod)}</td></tr>
+            <tr>
+                <td style="border:1px solid #333;padding:8px;">前欠金额（大写）：<strong>${numberToChinese(Math.abs(rec.prevBalance))}${rec.prevBalance<0?'(多付)':''}</strong></td>
+                <td style="border:1px solid #333;padding:8px;text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.prevBalance.toFixed(2)} 元</td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #333;padding:8px;">汇款金额（大写）：<strong>${numberToChinese(rec.paymentAmount)}</strong></td>
+                <td style="border:1px solid #333;padding:8px;text-align:right;font-weight:bold;color:#28a745;">¥${rec.paymentAmount.toFixed(2)} 元</td>
+            </tr>
+            <tr><td colspan="2" style="border:1px solid #333;padding:8px;">其它金额：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;其它金额 0 元</td></tr>
+            <tr style="font-weight:bold;background:#fff8f0;">
+                <td style="border:1px solid #333;padding:8px;">累欠金额（大写）：<strong>${numberToChinese(Math.abs(rec.newBalance))}${rec.newBalance<0?'(多付)':''}</strong></td>
+                <td style="border:1px solid #333;padding:8px;text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.newBalance.toFixed(2)} 元</td>
+            </tr>
+            <tr><td colspan="2" style="border:1px solid #333;padding:12px 8px;min-height:35px;"><strong>备注：</strong>&nbsp;</td></tr>
+        </table>
+
+        <div style="display:flex;justify-content:space-between;margin-top:25px;padding-top:15px;">
+            <div>单位盖章：<span style="display:inline-block;width:150px;border-bottom:1px solid #000;"></span></div>
+            <div style="text-align:right;">制单人员：<span style="display:inline-block;width:120px;border-bottom:1px solid #000;"></span></div>
+        </div>
+
+        <div style="margin-top:10px;text-align:right;">
+            <button class="btn btn-primary" onclick="printReceiptNow()">🖨️ 打印收据单</button>
+        </div>
+    </div>`;
+
+    // Scroll to receipt preview (delay to ensure DOM is rendered)
+    setTimeout(() => {
+        area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+}
+
+// Print receipt from in-page preview
+function printReceiptNow() {
+    const receiptContent = document.getElementById('receiptPrintArea').innerHTML;
+    if (!receiptContent) { alert('没有可打印的收据单！'); return; }
+    const printWin = window.open('', '_blank', 'width=750,height=650');
+    printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>收款单</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'SimSun','宋体',serif; padding:30px 40px; color:#000; font-size:15px; line-height:1.8; }
+.invoice-container{max-width:700px;margin:0 auto;}
+table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:6px 8px;}
+.amount-red{color:#c41e3a;font-weight:bold;}
+@media print{body *{visibility:hidden;}.invoice-container,.invoice-container *{visibility:visible;}.invoice-container{position:absolute;top:0;left:0;width:100%;}}
+</style></head><body>${receiptContent}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
+    printWin.document.close();
+}
+
+// =============================================
+// Save Order Only (保存，不打印)
+// =============================================
+function saveOrderOnly() {
+    const custId = document.getElementById('orderCustomer').value;
+    if (!custId || currentOrderItems.length === 0) {
+        alert('请选择客户并添加商品！'); return;
+    }
+
+    const customers = loadData(DB_KEYS.customers);
+    const customer = customers.find(c => c.id === custId);
+    if (!customer) { alert('客户不存在！'); return; }
+
+    const orderNo = document.getElementById('orderNo').textContent;
+    const orderDate = new Date().toLocaleDateString('zh-CN');
+    const totalQty = currentOrderItems.reduce((s, it) => s + it.qty, 0);
+    const totalAmt = currentOrderItems.reduce((s, it) => s + it.qty * it.price, 0);
+    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+
+    const prevBalance = customer.balance;
+    const finalBalance = prevBalance + totalAmt - payment;
+
+    // Build order record
+    const order = {
+        id: 'O' + Date.now(),
+        orderNo: orderNo,
+        date: orderDate,
+        customerId: custId,
+        customerName: customer.name,
+        phone: customer.phone,
+        address: customer.address,
+        items: JSON.parse(JSON.stringify(currentOrderItems)),
+        totalQty: totalQty,
+        totalAmount: totalAmt,
+        otherAmount: 0,
+        prevBalance: prevBalance,
+        payment: payment,
+        finalBalance: finalBalance,
+        remark: ''
+    };
+
+    // Save order
+    const orders = loadData(DB_KEYS.orders);
+    orders.unshift(order);
+    saveData(DB_KEYS.orders, orders);
+
+    // Update customer balance
+    customer.balance = finalBalance;
+    customer.totalSpent += totalAmt;
+    customer.totalPaid += payment;
+    const cidx = customers.findIndex(c => c.id === custId);
+    if (cidx !== -1) customers[cidx] = customer;
+    saveData(DB_KEYS.customers, customers);
+
+    // If this order has payment, also create a linked payment record
+    if (payment > 0) {
+        const now = new Date();
+        const payRecord = {
+            id: 'P' + Date.now() + '_O',
+            receiptNo: 'KHZJ' + (Date.now().toString().slice(-10)),
+            date: now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'),
+            time: String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'),
+            customerId: custId,
+            customerName: customer.name,
+            phone: customer.phone || '',
+            address: customer.address || '',
+            prevBalance: prevBalance,
+            paymentAmount: payment,
+            paymentMethod: document.getElementById('paymentMethod').value || '现金',
+            orderAmount: totalAmt,
+            newBalance: finalBalance,
+            remark: `随单${orderNo}收款`,
+            orderId: order.id
+        };
+        let allPayments = loadData(DB_KEYS.payments);
+        allPayments.unshift(payRecord);
+        saveData(DB_KEYS.payments, allPayments);
+    }
+
+    // Generate printable invoice preview in-page
+    generateInvoice(order);
+
+    // Reset form
+    currentOrderItems = [];
+    document.getElementById('orderCustomer').value = '';
+    document.getElementById('paymentAmount').value = 0;
+    document.getElementById('balanceInfo').style.display = 'none';
+    document.getElementById('paymentSection').style.display = 'none';
+    renderCurrentOrder();
+    generateOrderNo();
+    checkCanSave();
+
+    alert(`✅ 销售单 ${orderNo} 已保存成功！\n客户 ${customer.name} 当前结欠：¥${finalBalance.toFixed(2)}\n\n下方已显示销售单预览，可点「打印」按钮输出。`);
+}
+
+// =============================================
+// Print Current Invoice (只打印)
+// =============================================
+function printCurrentInvoice() {
+    const printContent = document.getElementById('printArea').innerHTML;
+    if (!printContent) {
+        alert('请先点「保存」生成销售单后再打印！'); return;
+    }
+    // Open new window and print
+    const orderNo = document.getElementById('orderNo').textContent || '销售单';
+    const printWin = window.open('', '_blank', 'width=800,height=900');
+    printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>销售单 - ${orderNo}</title>
+<style>
+body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
+.invoice-container{max-width:700px;margin:0 auto;border:1px solid #000;padding:25px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}th,td{border:1px solid #333;padding:6px 8px;text-align:center;}
+th{background:#f5f5f5;}.amount-red{color:#c41e3a;font-weight:bold;}
+.summary-line{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;}
+.summary-line.total{font-weight:bold;border-top:2px solid #333;padding-top:8px;margin-top:5px;}
+.sign-row{display:flex;justify-content:space-around;margin-top:15px;padding-top:12px;border-top:1px solid #eee;}
+@media print{body *{visibility:hidden;}.invoice-container,.invoice-container *{visibility:visible;}.invoice-container{position:absolute;top:0;left:0;width:100%;}}
+</style></head><body>${printContent}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
+    printWin.document.close();
+}
+
+function generateInvoice(order) {
+    const printArea = document.getElementById('printArea');
+    printArea.style.display = 'block';
+
+    const itemsRows = order.items.map(it =>
+        `<tr>
+            <td>${escapeHtml(it.brand||'-')}</td>
+            <td>${escapeHtml(it.sku)}</td>
+            <td>内衣</td>
+            <td>${it.qty<0?'<span style="color:red;font-weight:bold;">'+it.qty+'件</span>':it.qty+'件'}</td>
+            <td>${it.price.toFixed(2)}</td>
+            <td>${(it.qty*it.price).toFixed(2)}</td>
+            <td>${escapeHtml(it.remark||'-')}</td>
+        </tr>`
+    ).join('');
+
+    printArea.innerHTML = `
+    <div class="invoice-container" id="invoiceDoc">
+        <div class="invoice-title-row">
+            <div style="width:60px;"></div>
+            <div class="invoice-company">
+                <h1>康梦诗内衣</h1>
+                <h2>销售单</h2>
+            </div>
+            <div class="invoice-no">
+                <span class="label">NO.</span>
+                <span class="value">${order.orderNo.replace('KMSD','')}</span>
+                <div class="invoice-subno">${order.orderNo}</div>
+            </div>
+        </div>
+
+        <div class="invoice-meta">
+            <div class="invoice-meta-item">
+                客户名称：<strong>${escapeHtml(order.customerName)}</strong>
+            </div>
+            <div class="invoice-meta-item">
+                手机/微信：<strong>${escapeHtml(order.phone || '-')}</strong>
+            </div>
+            <div class="invoice-meta-item" style="grid-column:span 1;">
+                地址：${escapeHtml(order.address || '-')}
+            </div>
+            <div class="invoice-meta-item" style="text-align:right;">
+                一共：1页/当前：1页
+            </div>
+            <div class="invoice-meta-item" style="text-align:right;">
+                开单日期：${order.date}
+            </div>
+        </div>
+
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th>商标</th><th>款号</th><th>款式类型</th><th>数量</th><th>单价</th><th>金额</th><th>备注</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsRows}
+                <tr class="invoice-total-row">
+                    <td colspan="3"><strong>合 计：</strong></td>
+                    <td>${order.totalQty}件</td>
+                    <td></td>
+                    <td>${order.totalAmount.toFixed(2)}</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="invoice-summary">
+            <div class="summary-line">
+                <span>本单金额 <strong class="amount-red">${order.totalAmount.toFixed(2)}</strong>元</span>
+            </div>
+            <div class="summary-line">
+                <span>前次金额 <strong>${order.prevBalance.toFixed(2)}</strong>元 &nbsp;&nbsp;&nbsp;&nbsp; 收款金额 <strong>${order.payment.toFixed(2)}</strong>元</span>
+            </div>
+            <div class="summary-line" style="margin-top:8px;">
+                <span>来款情况：</span>
+            </div>
+            <div class="summary-line total">
+                <span>结欠金额：<strong>${order.finalBalance.toFixed(2)}</strong>元 &nbsp;&nbsp;&nbsp;&nbsp; 结欠金额（大写）：
+                      <strong>${numberToChinese(order.finalBalance)}</strong> 元</span>
+            </div>
+        </div>
+
+        <div class="invoice-footer">
+            <div class="footer-note">尊敬的客户：如有任何质量或者数量问题，请于三天内通知并协商解决，逾期我公司将不负任何责任。</div>
+            <div class="sign-row">
+                <div class="sign-item">制单人：<span>&nbsp;</span></div>
+                <div class="sign-item">提货人：<span>&nbsp;</span></div>
+                <div class="sign-item">收货人：<span>&nbsp;</span></div>
+            </div>
+        </div>
+
+        <div style="position:absolute;top:-40px;right:0;color:#999;font-size:11px;transform:rotate(-90deg);">
+            白色存根 · 红色给客户
+        </div>
+    </div>`;
+}
+
+function reprintOrder() {
+    // Get current order detail from modal
+    const orders = loadData(DB_KEYS.orders);
+    const viewingId = document.getElementById('viewingOrderId')?.value;
+    const order = viewingId ? orders.find(o => o.id === viewingId) : null;
+    if (!order) { alert('订单信息丢失，无法打印。'); return; }
+
+    generateInvoice(order);
+    const printContent = document.getElementById('printArea').innerHTML;
+
+    if (printContent) {
+        const printWin = window.open('', '_blank', 'width=800,height=900');
+        printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>销售单 - ${order.orderNo}</title>
+<style>
+body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
+.invoice-container{max-width:700px;margin:0 auto;border:1px solid #000;padding:25px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}th,td{border:1px solid #333;padding:6px 8px;text-align:center;}
+th{background:#f5f5f5;}.amount-red{color:#c41e3a;font-weight:bold;}
+.summary-line{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;}
+.summary-line.total{font-weight:bold;border-top:2px solid #333;padding-top:8px;margin-top:5px;}
+@media print{body *{visibility:hidden;}.invoice-container,.invoice-container *{visibility:visible;}.invoice-container{position:absolute;top:0;left:0;width:100%;}}
+</style></head><body>${printContent}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
+        printWin.document.close();
+    }
+}
+
+// =============================================
+// History (订单 + 收款统一展示)
+// =============================================
+function renderHistoryTable() {
+    const orders = loadData(DB_KEYS.orders);
+    const payments = loadData(DB_KEYS.payments);
+    const fcust = document.getElementById('filterCustomer').value;
+    const dfrom = document.getElementById('filterDateFrom').value;
+    const dto = document.getElementById('filterDateTo').value;
+
+    // Build unified list: orders + payments
+    let items = [];
+
+    orders.forEach(o => {
+        items.push({
+            type: 'order',
+            id: o.id,
+            no: o.orderNo,
+            date: o.date,
+            customerId: o.customerId,
+            customerName: o.customerName,
+            amount: o.totalAmount,       // 销售金额（正数）
+            payment: o.payment || 0,     // 随单收款
+            balance: o.finalBalance,     // 结欠
+            data: o
+        });
+    });
+
+    payments.forEach(p => {
+        items.push({
+            type: 'payment',
+            id: p.id,
+            no: p.receiptNo,
+            date: p.date + ' ' + (p.time||''),
+            customerId: p.customerId,
+            customerName: p.customerName,
+            amount: p.orderAmount || 0,   // 关联销售金额(可能为0)
+            payment: p.paymentAmount,     // 收款金额
+            balance: p.newBalance,        // 收款后余额
+            data: p
+        });
+    });
+
+    // Sort by date desc (newest first)
+    items.sort((a, b) => b.date.localeCompare(a.date));
+
+    if (fcust) items = items.filter(x => x.customerId === fcust);
+    if (dfrom) items = items.filter(x => x.date.substring(0,10) >= dfrom);
+    if (dto) items = items.filter(x => x.date.substring(0,10) <= dto);
+
+    const tbody = document.getElementById('historyTableBody');
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="color:#999;padding:30px;">暂无记录</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = items.map((item, i) => {
+        if (item.type === 'order') {
+            return `
+            <tr style="background:#fff;">
+                <td>${i + 1}</td>
+                <td><span style="background:#c41e3a;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;">销售</span></td>
+                <td><strong>${item.no}</strong></td>
+                <td>${item.date}</td>
+                <td>${escapeHtml(item.customerName)}</td>
+                <td>¥${item.amount.toFixed(2)}</td>
+                <td style="color:#28a745;">¥${item.payment.toFixed(2)}</td>
+                <td class="${item.balance > 0 ? 'amount-red' : item.balance < 0 ? '' : ''}">¥${item.balance.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="viewOrderDetail('${item.id}')">查看</button>
+                    <button class="btn btn-sm btn-primary" onclick="reprintOrderById('${item.id}')">打印</button>
+                </td>
+            </tr>`;
+        } else {
+            return `
+            <tr style="background:#f0fdf4;">
+                <td>${i + 1}</td>
+                <td><span style="background:#28a745;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;">收款</span></td>
+                <td><strong>${item.no}</strong></td>
+                <td>${item.data.date} ${item.data.time||''}</td>
+                <td>${escapeHtml(item.customerName)}</td>
+                <td>¥${item.amount.toFixed(2)}</td>
+                <td style="color:#28a745;font-weight:bold;">¥${item.payment.toFixed(2)}</td>
+                <td class="${item.balance > 0 ? 'amount-red' : item.balance < 0 ? '' : ''}">¥${item.balance.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-success" onclick="reprintReceiptById('${item.id}')">打印收款单</button>
+                </td>
+            </tr>`;
+        }
+    }).join('');
+}
+
+function reprintOrderById(orderId) {
+    const orders = loadData(DB_KEYS.orders);
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    // Set viewing ID for reprint function
+    const existingViewId = document.getElementById('viewingOrderId');
+    if (!existingViewId) {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'viewingOrderId';
+        hiddenInput.value = orderId;
+        document.body.appendChild(hiddenInput);
+    } else {
+        existingViewId.value = orderId;
+    }
+    generateInvoice(order);
+    const printContent = document.getElementById('printArea').innerHTML;
+    if (printContent) {
+        const printWin = window.open('', '_blank', 'width=800,height=900');
+        printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>销售单 - ${order.orderNo}</title>
+<style>
+body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
+.invoice-container{max-width:700px;margin:0 auto;border:1px solid #000;padding:25px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}th,td{border:1px solid #333;padding:6px 8px;text-align:center;}
+th{background:#f5f5f5;}.amount-red{color:#c41e3a;font-weight:bold;}
+.summary-line{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;}
+.summary-line.total{font-weight:bold;border-top:2px solid #333;padding-top:8px;margin-top:5px;}
+@media print{body *{visibility:hidden;}.invoice-container,.invoice-container *{visibility:visible;}.invoice-container{position:absolute;top:0;left:0;width:100%;}}
+</style></head><body>${printContent}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
+        printWin.document.close();
+    }
+}
+
+function reprintReceiptById(paymentId) {
+    const payments = loadData(DB_KEYS.payments);
+    const rec = payments.find(p => p.id === paymentId);
+    if (!rec) { alert('找不到收款记录！'); return; }
+
+    // 直接弹窗打印（因为可能在历史页面调用，order页面的预览区不可见）
+    const dateStr = rec.date + ' ' + (rec.time || '');
+    const printWin = window.open('', '_blank', 'width=750,height=700');
+    printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>收款单 - ${rec.receiptNo}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'SimSun','宋体',serif;padding:30px 40px;color:#000;font-size:15px;line-height:1.8;}
+h2{font-size:24px;font-weight:bold;letter-spacing:3px;color:#c41e3a;text-align:center;margin-bottom:5px;}
+.sub-info{text-align:center;font-size:12px;color:#666;margin-bottom:18px;}
+.title-row{text-align:center;font-size:20px;font-weight:bold;margin-bottom:20px;letter-spacing:2px;color:#28a745;}
+.info-row{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:6px 0;}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;}td{border:1px solid #333;padding:8px;}
+.footer{display:flex;justify-content:space-between;margin-top:25px;padding-top:15px;}
+.sign-line{display:inline-block;width:150px;border-bottom:1px solid #000;}
+@media print{body *{visibility:hidden;}body>div,body>table,body>*{visibility:visible;}}
+</style></head><body>
+<div>
+<h2>康梦诗内衣供应链</h2>
+<div class="sub-info">地址：广东省汕头市</div>
+<div class="title-row">${escapeHtml(rec.customerName)}（收款单）</div>
+<table><tr><td style="border:none;"><strong>单号：</strong>${rec.receiptNo}</td><td style="border:none;text-align:right;"><strong>日期：</strong>${dateStr}</td></tr></table>
+<table class="receipt-table">
+<tr><td colspan="2"><strong>客户名称：</strong>${escapeHtml(rec.customerName)}&nbsp;&nbsp;&nbsp;&nbsp;<strong>收款帐号：</strong>${escapeHtml(rec.paymentMethod)}</td></tr>
+<tr><td>前欠金额（大写）：<strong>${numberToChinese(Math.abs(rec.prevBalance))}${rec.prevBalance<0?'(多付)':''}</strong></td><td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.prevBalance.toFixed(2)} 元</td></tr>
+<tr><td>汇款金额（大写）：<strong>${numberToChinese(rec.paymentAmount)}</strong></td><td style="text-align:right;font-weight:bold;color:#28a745;">¥${rec.paymentAmount.toFixed(2)} 元</td></tr>
+<tr><td colspan="2">其它金额：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;其它金额 0 元</td></tr>
+<tr style="font-weight:bold;background:#fff8f0;">
+<td>累欠金额（大写）：<strong>${numberToChinese(Math.abs(rec.newBalance))}${rec.newBalance<0?'(多付)':''}</strong></td>
+<td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.newBalance.toFixed(2)} 元</td></tr>
+<tr><td colspan="2" style="padding:12px 8px;min-height:35px;"><strong>备注：</strong>&nbsp;</td></tr>
+</table>
+<div class="footer">
+<div>单位盖章：<span class="sign-line"></span></div>
+<div style="text-align:right;">制单人员：<span class="sign-line"></span></div>
+</div>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
+    printWin.document.close();
+}
+
+function viewOrderDetail(orderId) {
+    const orders = loadData(DB_KEYS.orders);
+    const o = orders.find(x => x.id === orderId);
+    if (!o) return;
+
+    const itemsHtml = o.items.map(it =>
+        `<tr><td>${escapeHtml(it.sku)}</td><td>${escapeHtml(it.style||'-')}</td><td>${it.qty}</td>
+         <td>¥${it.price.toFixed(2)}</td><td>¥${(it.qty*it.price).toFixed(2)}</td><td>${escapeHtml(it.remark||'-')}</td></tr>`
+    ).join('');
+
+    document.getElementById('orderDetailContent').innerHTML = `
+        <div style="margin-bottom:15px;"><strong>单号：</strong>${o.orderNo} | <strong>日期：</strong>${o.date} | <strong>客户：</strong>${escapeHtml(o.customerName)}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr><th>款号</th><th>款式</th><th>数量</th><th>单价</th><th>金额</th><th>备注</th></tr></thead>
+            <tbody>${itemsHtml}</tbody>
+        </table>
+        <div style="margin-top:15px;line-height:1.8;">
+            <div>本单金额：<strong class="amount-red">¥${o.totalAmount.toFixed(2)}</strong></div>
+            <div>前次结欠：<strong>¥${o.prevBalance.toFixed(2)}</strong> | 收款：<strong style="color:#28a745;">¥${o.payment.toFixed(2)}</strong></div>
+            <div style="font-size:16px;margin-top:8px;">最终结欠：<strong class="amount-red">¥${o.finalBalance.toFixed(2)}</strong> （大写：${numberToChinese(o.finalBalance)}）</div>
+        </div>
+        <input type="hidden" id="viewingOrderId" value="${orderId}">
+    `;
+    document.getElementById('orderDetailModal').classList.add('show');
+}
+
+function exportHistory() {
+    const orders = loadData(DB_KEYS.orders);
+    const payments = loadData(DB_KEYS.payments);
+
+    if (orders.length === 0 && payments.length === 0) { alert('没有可导出的数据！'); return; }
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: 销售单
+    if (orders.length > 0) {
+        const orderRows = orders.map(o => [o.orderNo, o.date, o.customerName, o.totalQty || 0, o.totalAmount.toFixed(2), o.payment.toFixed(2), o.finalBalance.toFixed(2)]);
+        const orderData = [['销售单号','日期','客户','数量','金额','来款','结欠'], ...orderRows];
+        const wsOrders = XLSX.utils.aoa_to_sheet(orderData);
+        XLSX.utils.book_append_sheet(wb, wsOrders, '销售单');
+    }
+
+    // Sheet 2: 收款记录
+    if (payments.length > 0) {
+        const payRows = payments.map(p => [p.receiptNo, p.date + (p.time ? ' ' + p.time : ''), p.customerName, p.paymentMethod, p.prevBalance.toFixed(2), p.paymentAmount.toFixed(2), p.newBalance.toFixed(2), p.remark || '']);
+        const payData = [['收款单号','时间','客户','收款方式','收款前余额','收款金额','收款后余额','备注'], ...payRows];
+        const wsPayments = XLSX.utils.aoa_to_sheet(payData);
+        XLSX.utils.book_append_sheet(wb, wsPayments, '收款记录');
+    }
+
+    XLSX.writeFile(wb, `康梦诗业务记录_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.xlsx`);
+}
+
+// =============================================
+// Utility Functions
+// =============================================
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeJs(str) { return str.replace(/'/g,"\\'").replace(/\\/g,'\\\\').replace(/\n/g,'\\n'); }
+
+function numberToChinese(num) {
+    num = Math.abs(num);
+    const digits = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
+    const units = ['','拾','佰','仟'];
+    const bigUnits = ['','万','亿'];
+
+    if (num === 0) return '零元整';
+
+    let intPart = Math.floor(num);
+    let decPart = Math.round((num - intPart) * 100);
+
+    let result = '';
+    if (intPart > 0) {
+        let intStr = String(intPart);
+        let zeroFlag = false;
+
+        for (let i = 0; i < intStr.length; i++) {
+            const digit = parseInt(intStr[i]);
+            const pos = intStr.length - 1 - i;
+            const bigUnitPos = Math.floor(pos / 4);
+            const smallUnitPos = pos % 4;
+
+            if (digit === 0) {
+                zeroFlag = true;
+                if (smallUnitPos === 0 && bigUnitPos > 0) {
+                    result += bigUnits[bigUnitPos];
+                }
+            } else {
+                if (zeroFlag) { result += digits[0]; zeroFlag = false; }
+                result += digits[digit] + units[smallUnitPos];
+                if (smallUnitPos === 0 && bigUnitPos > 0) {
+                    result += bigUnits[bigUnitPos];
+                }
+            }
+        }
+        result += '元';
+    }
+
+    if (decPart > 0) {
+        const jiao = Math.floor(decPart / 10);
+        const fen = decPart % 10;
+        result += (jiao > 0 ? digits[jiao] + '角' : '') + (fen > 0 ? digits[fen] + '分' : '');
+    } else {
+        result += '整';
+    }
+
+    return result;
+}
+
+// =============================================
+// Data Management (Export / Import)
+// =============================================
+function exportAllData() {
+    const backup = {
+        version: '1.1',
+        exportTime: new Date().toISOString(),
+        appName: '康梦诗内衣供应链销售开单系统',
+        products: loadData(DB_KEYS.products),
+        customers: loadData(DB_KEYS.customers),
+        orders: loadData(DB_KEYS.orders),
+        payments: loadData(DB_KEYS.payments),
+        orderCounter: getCounter()
+    };
+
+    const jsonStr = JSON.stringify(backup, null, 2);
+    // Add UTF-8 BOM so Windows apps recognize encoding correctly
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `康梦诗数据备份_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}_${new Date().toTimeString().slice(0,5).replace(/:/g,'')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Update last backup time
+    document.getElementById('dataLastBackup').textContent = '刚刚';
+    localStorage.setItem('kms_last_backup', new Date().toLocaleString('zh-CN'));
+
+    alert(`✅ 数据导出成功！\n\n商品：${backup.products.length} 条\n客户：${backup.customers.length} 个\n订单：${backup.orders.length} 单\n\n请妥善保管此备份文件。`);
+}
+
+function importAllData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+        alert('❌ 请选择 .json 格式的备份文件！'); return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+
+            // Basic validation
+            if (!data.appName || !data.products || !data.customers || !data.orders) {
+                alert('❌ 文件格式不正确，不是有效的康梦诗数据备份文件！');
+                return;
+            }
+
+            const confirmMsg =
+`⚠️ 即将导入以下数据，当前浏览器的数据将被覆盖：\n\n` +
+`商品：${data.products.length} 条（当前 ${loadData(DB_KEYS.products).length} 条）\n` +
+`客户：${data.customers.length} 个（当前 ${loadData(DB_KEYS.customers).length} 个）\n` +
+`订单：${data.orders.length} 单（当前 ${loadData(DB_KEYS.orders).length} 单）\n` +
+`备份时间：${data.exportTime ? new Date(data.exportTime).toLocaleString('zh-CN') : '未知'}\n\n确定要继续吗？`;
+
+            if (!confirm(confirmMsg)) return;
+
+            // Import data
+            saveData(DB_KEYS.products, data.products || []);
+            saveData(DB_KEYS.customers, data.customers || []);
+            saveData(DB_KEYS.orders, data.orders || []);
+            saveData(DB_KEYS.payments, data.payments || []);
+            if (data.orderCounter !== undefined) {
+                localStorage.setItem(DB_KEYS.orderCounter, data.orderCounter);
+            }
+            if (data.exportTime) {
+                localStorage.setItem('kms_last_backup', new Date(data.exportTime).toLocaleString('zh-CN'));
+            }
+
+            alert(`✅ 数据导入成功！\n\n商品：${data.products.length} 条\n客户：${data.customers.length} 个\n订单：${data.orders.length} 单\n收款记录：${(data.payments||[]).length} 条\n\n页面将刷新以加载新数据。`);
+            location.reload();
+
+        } catch(err) {
+            alert('❌ 文件解析失败：' + err.message);
+        }
+    };
+    reader.readAsText(file, 'utf-8');
+    event.target.value = '';
+}
+
+function clearAllData() {
+    const msg = `⚠️⚠️⚠️ 极度危险操作 ⚠️⚠️⚠️\n\n` +
+`这将永久删除以下所有数据，不可恢复：\n` +
+`• 所有商品数据（${loadData(DB_KEYS.products).length} 条）\n` +
+`• 所有客户信息（${loadData(DB_KEYS.customers).length} 个）\n` +
+`• 全部订单记录（${loadData(DB_KEYS.orders).length} 单）\n` +
+`• 全部收款记录（${loadData(DB_KEYS.payments).length} 条）\n` +
+`• 销售单号计数器\n\n` +
+`如果不确定，请先点「导出全部数据」做备份！\n\n确定要清空所有数据吗？`;
+
+    if (!confirm(msg)) return;
+    if (!confirm('最后确认：真的要删除所有数据吗？')) return;
+
+    Object.values(DB_KEYS).forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem('kms_last_backup');
+
+    alert('✅ 所有数据已清空。页面将刷新。');
+    location.reload();
+}
+
+function refreshDataStats() {
+    const products = loadData(DB_KEYS.products);
+    const customers = loadData(DB_KEYS.customers);
+    const orders = loadData(DB_KEYS.orders);
+    const payments = loadData(DB_KEYS.payments);
+    const lastBackup = localStorage.getItem('kms_last_backup') || '-';
+
+    document.getElementById('dataProductCount').textContent = products.length;
+    document.getElementById('dataCustomerCount').textContent = customers.length;
+    document.getElementById('dataOrderCount').textContent = orders.length;
+    document.getElementById('dataPaymentCount').textContent = payments.length;
+    document.getElementById('dataLastBackup').textContent = lastBackup === '-' ? '-' : lastBackup;
+}
+
+// =============================================
+// Initialize
+// =============================================
+window.onload = function() {
+    renderProductTable();
+    renderCustomerGrid();
+
+    // Manual product form: Enter key support
+    document.getElementById('manualSku').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); document.getElementById('manualPrice').focus(); }
+    });
+    document.getElementById('manualPrice').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); document.getElementById('manualSupplier').focus(); }
+    });
+    document.getElementById('manualSupplier').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); addManualProduct(); }
+    });
+};
+</script>
+
+</body>
+</html>
