@@ -2395,16 +2395,18 @@ function saveReceipt() {
     // Clear payment field after saving
     document.getElementById('paymentAmount').value = '0';
 
-    // Refresh UI
+    // Refresh UI - 先更新客户信息，再生成预览，最后刷新往期列表
     updateCustomerInfoDisplay();
     updateFinalBalance();
     checkCanSave();
-    renderCustomerPastOrders();
 
     // Generate receipt preview IN-PAGE (like sales order invoice)
     generateReceiptPreview(paymentRecord);
 
-    alert(`✅ 收款单已保存入账！\n\n收款金额：¥${payment.toFixed(2)} 元\n客户余额更新为：¥${newBalance.toFixed(2)} 元\n\n下方已显示收据单预览。`);
+    // 刷新往期销售单/收款单列表（必须在生成预览之后）
+    renderCustomerPastOrders();
+
+    alert(`✅ 收款单已保存入账！\n\n收款金额：¥${payment.toFixed(2)} 元\n客户余额更新为：¥${newBalance.toFixed(2)} 元\n\n下方已显示收据单预览及往期记录。`);
 }
 
 // =============================================
