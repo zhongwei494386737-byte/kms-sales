@@ -694,7 +694,7 @@
             .sign-row { flex-direction: column; gap: 10px; }
         }
 
-        /* ===== 往期销售单区域样式 ===== */
+        /* ===== 往期销售单区域样式（完整单据样式） ===== */
         .past-orders-section {
             margin-top: 25px;
             border: 2px solid #e0e0e0;
@@ -739,17 +739,15 @@
 
         .past-orders-body {
             padding: 15px 20px;
-            max-height: 500px;
-            overflow-y: auto;
+            max-height: none;
+            overflow-y: visible;
             background: #fafafa;
         }
 
         /* 按日期分组 */
         .date-group {
-            margin-bottom: 12px;
+            margin-bottom: 20px;
             border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #e0e0e0;
             background: white;
         }
 
@@ -762,11 +760,10 @@
             justify-content: space-between;
             transition: background 0.2s;
             user-select: none;
+            border-radius: 8px 8px 0 0;
         }
 
-        .date-group-header:hover {
-            background: #e4ecff;
-        }
+        .date-group-header:hover { background: #e4ecff; }
 
         .date-group-title {
             font-weight: bold;
@@ -785,94 +782,101 @@
             font-size: 12px;
         }
 
-        .date-summary {
-            font-size: 13px;
-            color: #666;
-        }
-
-        .date-amount {
-            color: #c41e3a;
-            font-weight: bold;
-        }
-
         .collapse-icon {
             transition: transform 0.3s;
             color: #999;
             font-size: 14px;
         }
 
-        .date-group.collapsed .collapse-icon {
-            transform: rotate(-90deg);
-        }
-
-        .date-group.collapsed .date-group-body {
-            display: none;
-        }
+        .date-group.collapsed .collapse-icon { transform: rotate(-90deg); }
+        .date-group.collapsed .date-group-body { display: none; }
 
         .date-group-body {
-            padding: 8px 0;
-        }
-
-        /* 单张销售单卡片 */
-        .order-mini-card {
-            display: flex;
-            align-items: center;
-            padding: 10px 16px;
-            border-bottom: 1px solid #f0f0f0;
-            transition: background 0.15s;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
             gap: 12px;
-            cursor: default;
+            align-items: start;
         }
 
-        .order-mini-card:last-child {
-            border-bottom: none;
+        /* 单张完整销售单/收款单缩略展示 */
+        .doc-thumb {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            transform-origin: top left;
+            position: relative;
+            overflow: hidden;
         }
 
-        .order-mini-card:hover {
-            background: #fff8f5;
+        .doc-thumb:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 5;
         }
 
-        .order-card-no {
-            min-width: 140px;
-            font-weight: bold;
-            color: #c41e3a;
-            font-size: 13px;
+        .doc-thumb.sales-thumb { border-color: #c41e3a; }
+        .doc-thumb.payment-thumb { border-color: #28a745; }
+
+        /* 缩略模式 */
+        .doc-thumb.thumb-mode {
+            transform: scale(1);
         }
 
-        .order-card-time {
-            font-size: 12px;
-            color: #999;
-            min-width: 55px;
+        /* 多张时自动缩小 */
+        .doc-grid-multi .doc-thumb {
+            transform: scale(0.85);
+            opacity: 0.92;
+        }
+        .doc-grid-multi .doc-thumb:hover {
+            transform: scale(1);
+            opacity: 1;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            z-index: 100;
         }
 
-        .order-card-items {
-            flex: 1;
-            font-size: 12px;
-            color: #666;
+        /* 放大模式（双击后）*/
+        .doc-thumb.enlarged {
+            transform: scale(1);
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+            z-index: 9999 !important;
+            max-width: 90vw !important;
+            max-height: 90vh !important;
+            overflow-y: auto !important;
+            box-shadow: 0 0 60px rgba(0,0,0,0.5) !important;
         }
 
-        .order-card-amount {
-            text-align: right;
-            min-width: 85px;
-            font-weight: bold;
-            color: #c41e3a;
-            font-size: 14px;
+        /* 单张时正常大小 */
+        .doc-grid-single .doc-thumb {
+            transform: none;
         }
 
-        .order-card-balance {
-            min-width: 80px;
-            text-align: right;
-            font-size: 12px;
-            font-weight: bold;
+        .doc-thumb-inner {
+            pointer-events: none; /* 让事件穿透到外层处理双击 */
         }
 
-        .balance-positive { color: #c41e3a; }
-        .balance-zero { color: #999; }
-        .balance-negative { color: #28a745; }
-
-        .order-card-action button {
-            padding: 3px 10px;
+        /* 覆盖层提示 */
+        .doc-thumb-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            color: white;
+            text-align: center;
+            padding: 18px 8px 8px;
             font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .doc-thumb:hover .doc-thumb-overlay {
+            opacity: 1;
         }
 
         .no-past-orders {
@@ -882,32 +886,17 @@
             font-size: 14px;
         }
 
-        .past-order-detail-row {
-            background: #fffbf0;
-            border-top: 1px dashed #e0c896;
-            padding: 10px 16px 10px 40px;
-            font-size: 12px;
+        /* 放大遮罩 */
+        .enlarged-overlay {
             display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 9998;
+            cursor: pointer;
         }
 
-        .past-order-detail-row.show {
-            display: block;
-        }
-
-        .past-detail-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px 16px;
-            line-height: 1.8;
-        }
-
-        .past-detail-item span:first-child {
-            color: #666;
-        }
-
-        .past-detail-item strong {
-            color: #333;
-        }
+        .enlarged-overlay.show { display: block; }
     </style>
 </head>
 <body>
@@ -1150,6 +1139,9 @@
                     <div class="no-past-orders">请选择客户后查看往期销售单</div>
                 </div>
             </div>
+
+            <!-- 放大遮罩层 -->
+            <div class="enlarged-overlay" id="enlargedOverlay" onclick="closeEnlarged()"></div>
         </div>
 
         <!-- Printable Invoice Preview - 销售单保存后在此处显示 -->
@@ -1911,8 +1903,109 @@ function onCustomerSelect() {
 }
 
 // =============================================
-// 往期销售单展示（按日期分组，选择客户后自动加载）
+// 往期销售单/收款单展示（完整单据样式，按日期分组）
 // =============================================
+
+/** 统一日期标准化：各种格式 → YYYY-MM-DD */
+function normalizeDate(dateStr) {
+    if (!dateStr) return '';
+    // 处理 "2026/6/17" → "2026-06-17"
+    let s = dateStr.trim().replace(/\//g, '-');
+    const parts = s.split('-');
+    if (parts.length === 3) {
+        // 补零
+        const y = parts[0].padStart(4, '0');
+        const m = parts[1].padStart(2, '0');
+        const d = parts[2].padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    return s;
+}
+
+/** 格式化日期显示 */
+function formatDisplayDate(dateStr) {
+    const n = normalizeDate(dateStr);
+    if (!n) return dateStr;
+    const parts = n.split('-');
+    if (parts.length >= 3) {
+        return `${parts[0]}年${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+    }
+    return dateStr;
+}
+
+/** 渲染一张销售单的完整HTML（缩略用） */
+function renderPastOrderHtml(order, thumbMode) {
+    const scale = thumbMode ? 'transform: scale(1);' : '';
+    const itemsRows = order.items.map(it =>
+        `<tr>
+            <td>${escapeHtml(it.brand||'-')}</td><td>${escapeHtml(it.sku)}</td><td>内衣</td>
+            <td>${it.qty<0?'<span style="color:red;font-weight:bold;">'+it.qty+'件</span>':it.qty+'件'}</td>
+            <td>${it.price.toFixed(2)}</td><td>${(it.qty*it.price).toFixed(2)}</td><td>${escapeHtml(it.remark||'-')}</td>
+        </tr>`
+    ).join('');
+
+    const fontSize = thumbMode ? 'font-size:11px;' : 'font-size:13px;';
+    const pad = thumbMode ? 'padding:8px;' : 'padding:18px;';
+
+    return `<div class="invoice-container" style="${scale}${fontSize}${pad}border:1px solid #333;max-width:100%;background:white;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+            <div style="text-align:center;flex:1;">
+                <div style="font-size:${thumbMode?16:20}px;font-weight:bold;color:#c41e3a;">康梦诗内衣</div>
+                <div style="font-size:${thumbMode?14:18}px;font-weight:bold;color:#c41e3a;">销售单</div>
+            </div>
+            <div style="text-align:right;font-size:${thumbMode?11:12}px;color:#666;">
+                NO. ${order.orderNo.replace('KMSD','')}<br>${order.orderNo}
+            </div>
+        </div>
+        <div style="font-size:${thumbMode?10:12}px;color:#555;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;">
+            客户：<strong>${escapeHtml(order.customerName)}</strong>
+            电话：${escapeHtml(order.phone || '-')}
+            日期：${order.date}
+        </div>
+        <table style="width:100%;border-collapse:collapse;${fontSize}">
+            <thead><tr><th>商标</th><th>款号</th><th>类型</th><th>数量</th><th>单价</th><th>金额</th><th>备注</th></tr></thead>
+            <tbody>${itemsRows}</tbody>
+            <tfoot><tr style="font-weight:bold;background:#f5f5f5;">
+                <td colspan="3">合计：</td>
+                <td>${order.totalQty||0}件</td><td></td>
+                <td>${order.totalAmount.toFixed(2)}</td><td></td>
+            </tr></tfoot>
+        </table>
+        <div style="margin-top:8px;${fontSize}line-height:1.6;">
+            <div>本单金额：<strong style="color:#c41e3a">${order.totalAmount.toFixed(2)}元</strong></div>
+            <div>前次结欠：${order.prevBalance.toFixed(2)}元 &nbsp; 收款金额：<strong style="color:#28a745">${(order.payment||0).toFixed(2)}元</strong></div>
+            <div style="font-weight:bold;color:#c41e3a;margin-top:4px;">结欠金额：${order.finalBalance.toFixed(2)}元 （${numberToChinese(order.finalBalance)}）</div>
+        </div>
+    </div>`;
+}
+
+/** 渲染一张收款单的完整HTML（缩略用） */
+function renderPastPaymentHtml(rec, thumbMode) {
+    const scale = thumbMode ? '' : '';
+    const fontSize = thumbMode ? 'font-size:11px;' : 'font-size:14px;';
+    const pad = thumbMode ? 'padding:12px;' : 'padding:25px;';
+    const timeInfo = rec.time ? `${rec.date} ${rec.time}` : rec.date;
+
+    return `<div style="${scale}${pad}border:1px solid #28a745;border-radius:6px;max-width:100%;background:white;">
+        <div style="text-align:center;margin-bottom:10px;">
+            <h2 style="font-size:${thumbMode?18:24}px;font-weight:bold;letter-spacing:3px;color:#28a745;">康梦诗内衣供应链</h2>
+            <div style="color:#28a745;font-size:${thumbMode?16:20}px;font-weight:bold;letter-spacing:2px;">${escapeHtml(rec.customerName)}（收款单）</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;${fontSize}margin-bottom:8px;"><tr>
+            <td style="border:none;"><strong>单号：</strong>${rec.receiptNo}</td>
+            <td style="border:none;text-align:right;"><strong>时间：</strong>${timeInfo}</td>
+        </tr></table>
+        <table style="width:100%;border-collapse:collapse;${fontSize}border:1px solid #28a745;">
+            <tr><td colspan="2"><strong>客户：</strong>${escapeHtml(rec.customerName)} &nbsp; <strong>方式：</strong>${escapeHtml(rec.paymentMethod)}</td></tr>
+            <tr><td><strong>前欠：</strong>${numberToChinese(Math.abs(rec.prevBalance))}</td><td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.prevBalance.toFixed(2)}</td></tr>
+            <tr><td><strong>汇款：</strong>${numberToChinese(rec.paymentAmount)}</td><td style="text-align:right;font-weight:bold;color:#28a745;">¥${rec.paymentAmount.toFixed(2)}</td></tr>
+            <tr style="font-weight:bold;background:#f0fff0;">
+                <td><strong>累欠：</strong>${numberToChinese(Math.abs(rec.newBalance))}</td>
+                <td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.newBalance.toFixed(2)}</td></tr>
+        </table>
+    </div>`;
+}
+
 function renderCustomerPastOrders() {
     const custId = document.getElementById('orderCustomer').value;
     const body = document.getElementById('pastOrdersBody');
@@ -1921,52 +2014,57 @@ function renderCustomerPastOrders() {
         return;
     }
 
-    // 获取该客户的所有订单（不含正在编辑的新单）
     const allOrders = loadData(DB_KEYS.orders).filter(o => o.customerId === custId);
+    const allPayments = loadData(DB_KEYS.payments).filter(p => p.customerId === custId);
+
+    // 合并所有记录并按日期分组
+    const records = [];
+
+    allOrders.forEach(o => {
+        records.push({ type: 'order', data: o, dateKey: normalizeDate(o.date), displayDate: o.date });
+    });
+
+    allPayments.forEach(p => {
+        records.push({ type: 'payment', data: p, dateKey: normalizeDate(p.date), displayDate: p.date + (p.time ? ' ' + p.time : '') });
+    });
 
     // 日期筛选
-    const filterDate = document.getElementById('pastOrderDateFilter').value;
-    let orders = allOrders;
-    if (filterDate) {
-        orders = orders.filter(o => {
-            // 兼容多种日期格式: "2026/6/17" 或 "2026-06-17"
-            const od = o.date.replace(/\//g, '-');
-            return od === filterDate || od.startsWith(filterDate);
-        });
+    const filterDateVal = document.getElementById('pastOrderDateFilter').value;
+    let filteredRecords = records;
+    if (filterDateVal) {
+        filteredRecords = records.filter(r => r.dateKey === filterDateVal);
     }
 
     // 排序
     const sortDir = document.getElementById('pastOrderSortFilter').value;
-    orders.sort((a, b) => sortDir === 'desc'
-        ? b.date.localeCompare(a.date)
-        : a.date.localeCompare(b.date));
+    filteredRecords.sort((a, b) => sortDir === 'desc'
+        ? b.displayDate.localeCompare(a.displayDate)
+        : a.displayDate.localeCompare(b.displayDate));
 
-    if (orders.length === 0) {
+    if (filteredRecords.length === 0) {
         body.innerHTML = `<div class="no-past-orders">
-            ${filterDate ? `📅 ${filterDate} 暂无销售单记录` : '📭 该客户暂无往期销售单'}
-            ${allOrders.length > 0 ? '<br><span style="font-size:12px;color:#999;">提示：共有 ' + allOrders.length + ' 张历史单据，可调整日期筛选或清除日期查看全部</span>' : ''}
+            ${filterDateVal ? `📅 ${formatDisplayDate(filterDateVal)} 暂无记录` : '📭 该客户暂无往期销售单或收款记录'}
+            ${records.length > 0 ? '<br><span style="font-size:12px;color:#999;">提示：共有 ' + records.length + ' 条历史记录（含销售单+收款单），可调整日期筛选或清除日期查看全部</span>' : ''}
         </div>`;
         return;
     }
 
     // 按日期分组
     const groups = {};
-    orders.forEach(o => {
-        const d = o.date.replace(/\//g, '-'); // 统一格式
-        if (!groups[d]) groups[d] = [];
-        groups[d].push(o);
+    filteredRecords.forEach(r => {
+        if (!groups[r.dateKey]) groups[r.dateKey] = [];
+        groups[r.dateKey].push(r);
     });
 
-    // 按排序方向排列日期组
     const sortedDates = Object.keys(groups).sort(sortDir === 'desc'
         ? (a, b) => b.localeCompare(a)
         : (a, b) => a.localeCompare(b));
 
     let html = '';
     sortedDates.forEach(dateStr => {
-        const dayOrders = groups[dateStr];
-        const dayTotalAmt = dayOrders.reduce((s, o) => s + o.totalAmount, 0);
-        const dayTotalQty = dayOrders.reduce((s, o) => s + (o.totalQty || 0), 0);
+        const dayRecords = groups[dateStr];
+        const isMulti = dayRecords.length > 1;
+        const gridClass = isMulti ? 'doc-grid-multi' : 'doc-grid-single';
 
         html += `
         <div class="date-group" id="dg-${dateStr}">
@@ -1974,46 +2072,32 @@ function renderCustomerPastOrders() {
                 <div class="date-group-title">
                     <span class="collapse-icon">▼</span>
                     <span>📅 ${formatDisplayDate(dateStr)}</span>
-                    <span class="date-badge">${dayOrders.length} 单</span>
-                    <span class="date-summary">
-                        共 <strong>${dayTotalQty}</strong> 件商品 |
-                        合计：<span class="date-amount">¥${dayTotalAmt.toFixed(2)}</span>
-                    </span>
+                    <span class="date-badge">${dayRecords.length} 条记录</span>
                 </div>
             </div>
-            <div class="date-group-body">`;
+            <div class="date-group-body ${gridClass}">`;
 
-        dayOrders.forEach((o, idx) => {
-            const balanceClass = o.finalBalance > 0 ? 'balance-positive' : o.finalBalance < 0 ? 'balance-negative' : 'balance-zero';
-            const itemsPreview = o.items.slice(0, 3).map(it =>
-                `${escapeHtml(it.sku)}×${it.qty}`
-            ).join(' | ');
-            const moreCount = o.items.length > 3 ? ` 等${o.items.length}款` : '';
+        dayRecords.forEach((r, idx) => {
+            let docContent = '';
+            let thumbClass = '';
+
+            if (r.type === 'order') {
+                docContent = renderPastOrderHtml(r.data, true);
+                thumbClass = 'sales-thumb';
+            } else {
+                docContent = renderPastPaymentHtml(r.data, true);
+                thumbClass = 'payment-thumb';
+            }
 
             html += `
-                <div class="order-mini-card" id="omc-${o.id}">
-                    <div>
-                        <div class="order-card-no">${o.orderNo}</div>
-                        <div class="order-card-time">${o.date}</div>
+                <div class="doc-thumb ${thumbClass}" id="dt-${r.type}-${idx}"
+                     ondblclick="enlargeDoc(this)"
+                     onclick="handleDocClick(event, this)">
+                    <div class="doc-thumb-inner">
+                        ${docContent}
                     </div>
-                    <div class="order-card-items" title="${o.items.map(i => i.sku + '×' + i.qty).join(', ')}">
-                        ${itemsPreview}${moreCount}
-                    </div>
-                    <div class="order-card-amount">¥${o.totalAmount.toFixed(2)}</div>
-                    <div class="order-card-balance ${balanceClass}">${o.finalBalance > 0 ? '欠' + o.finalBalance.toFixed(2) : o.finalBalance < 0 ? '余' + Math.abs(o.finalBalance).toFixed(2) : '已清'}</div>
-                    <div class="order-card-action">
-                        <button class="btn btn-sm btn-info" onclick="event.stopPropagation();togglePastDetail('${o.id}')">详情</button>
-                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();reprintPastOrder('${o.id}')">打印</button>
-                    </div>
-                </div>
-                <div class="past-order-detail-row" id="pdr-${o.id}">
-                    <div class="past-detail-items">
-                        ${o.items.map(it => `
-                            <div class="past-detail-item"><span>${escapeHtml(it.sku)}：</span><strong>${it.qty}件 × ¥${it.price.toFixed(2)} = ¥${(it.qty * it.price).toFixed(2)}</strong></div>
-                        `).join('')}
-                    </div>
-                    <div style="margin-top:8px;color:#888;">
-                        本单合计：${o.totalQty || 0}件 · 金额 ¥${o.totalAmount.toFixed(2)} · 随单收款 ¥${(o.payment||0).toFixed(2)} · 结欠 ¥${o.finalBalance.toFixed(2)}
+                    <div class="doc-thumb-overlay">
+                        双击放大查看 · 点击可打印
                     </div>
                 </div>`;
         });
@@ -2022,21 +2106,58 @@ function renderCustomerPastOrders() {
     });
 
     body.innerHTML = html;
-
-    // 设置日期筛选器的最大最小值
-    updatePastDateFilterRange(allOrders);
 }
 
-function formatDisplayDate(dateStr) {
-    // "2026-06-17" -> "2026年6月17日"
-    const parts = dateStr.split(/[-\/]/);
+// 单击处理 - 打印
+function handleDocClick(e, el) {
+    // 如果已经放大了就不响应单击打印
+    if (el.classList.contains('enlarged')) return;
+    // 从id中提取类型和索引来打印
+    const id = el.id; // dt-order-0 或 dt-payment-1
+    const parts = id.split('-');
     if (parts.length >= 3) {
-        const y = parts[0];
-        const m = parseInt(parts[1], 10);
-        const d = parseInt(parts[2], 10);
-        return `${y}年${m}月${d}日`;
+        const type = parts[1];
+        // 找到对应的data来打印 - 通过查找内部内容中的单号
+        const innerText = el.innerText;
+        // 直接触发打印该文档
+        printDocElement(el);
     }
-    return dateStr;
+}
+
+// 打印某个doc元素的内容
+function printDocElement(el) {
+    const content = el.querySelector('.doc-thumb-inner').innerHTML;
+    const printWin = window.open('', '_blank', 'width=800,height=900');
+    printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>打印单据</title>
+<style>
+body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
+*{margin:0;padding:0;box-sizing:border-box;}
+@media print{body * { visibility: visible; }}
+</style></head>
+<body>${content}
+<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
+    printWin.document.close();
+}
+
+// 双击放大
+let enlargedEl = null;
+function enlargeDoc(el) {
+    closeEnlarged();
+    el.classList.add('enlarged');
+    document.getElementById('enlargedOverlay').classList.add('show');
+    enlargedEl = el;
+
+    // 滚动页面到能看到放大的元素
+    window.scrollTo(0, 0);
+}
+
+function closeEnlarged() {
+    if (enlargedEl) {
+        enlargedEl.classList.remove('enlarged');
+        enlargedEl = null;
+    }
+    document.getElementById('enlargedOverlay').classList.remove('show');
 }
 
 function toggleDateGroup(dateStr) {
@@ -2044,24 +2165,18 @@ function toggleDateGroup(dateStr) {
     if (el) el.classList.toggle('collapsed');
 }
 
-function togglePastDetail(orderId) {
-    const el = document.getElementById('pdr-' + orderId);
-    if (el) el.classList.toggle('show');
-}
-
 function reprintPastOrder(orderId) {
     reprintOrderById(orderId);
 }
 
-function updatePastDateFilterRange(allOrders) {
+function updatePastDateFilterRange(allRecords) {
     const input = document.getElementById('pastOrderDateFilter');
-    if (!allOrders || allOrders.length === 0) return;
+    if (!allRecords || allRecords.length === 0) return;
 
-    // 提取所有日期并找到范围
-    const dates = allOrders.map(o => o.date.replace(/\//g, '-')).sort();
+    const dates = [...new Set(allRecords.map(r => normalizeDate(r.date)))].filter(Boolean).sort();
     if (dates.length > 0) {
-        input.min = dates[dates.length - 1];  // 最早
-        input.max = dates[0];                 // 最晚
+        input.min = dates[dates.length - 1];
+        input.max = dates[0];
     }
 }
 
