@@ -2233,21 +2233,16 @@ function handleQuickAdd() {
 }
 
 function addToOrderItem(sku, price, supplier, qty) {
-    // Check if already exists in current order
-    const existingIdx = currentOrderItems.findIndex(item => item.sku === sku);
-    if (existingIdx !== -1) {
-        currentOrderItems[existingIdx].qty += qty;
-    } else {
-        currentOrderItems.push({
-            sku: sku,
-            price: parseFloat(price),
-            supplier: supplier,
-            qty: qty,
-            brand: '',
-            style: '',
-            remark: ''
-        });
-    }
+    // 每次添加都作为独立的新行（不合并），方便区分退货/取货/样品/销售等不同场景
+    currentOrderItems.push({
+        sku: sku,
+        price: parseFloat(price),
+        supplier: supplier,
+        qty: qty,
+        brand: '',
+        style: '',
+        remark: ''
+    });
     renderCurrentOrder();
 }
 
