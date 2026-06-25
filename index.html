@@ -1266,6 +1266,10 @@
             <label>地址：</label>
             <input type="text" class="form-control" id="custAddress" placeholder="请输入地址">
         </div>
+        <div class="form-group">
+            <label>📝 备注信息（仅自己可见）：</label>
+            <textarea class="form-control" id="custRemark" rows="2" placeholder="记录客户特殊情况，如：付款习惯、合作偏好、注意事项等（此备注仅当前浏览器可见）"></textarea>
+        </div>
         <div class="action-bar" style="justify-content:flex-end;">
             <button class="btn btn-secondary" onclick="closeCustomerModal()">取消</button>
             <button class="btn btn-primary" onclick="saveCustomer()">保存</button>
@@ -1521,6 +1525,7 @@ function showCustomerModal(customerId = null) {
     document.getElementById('custName').value = '';
     document.getElementById('custPhone').value = '';
     document.getElementById('custAddress').value = '';
+    document.getElementById('custRemark').value = '';
 
     if (customerId) {
         const customers = loadData(DB_KEYS.customers);
@@ -1529,6 +1534,7 @@ function showCustomerModal(customerId = null) {
             document.getElementById('custName').value = c.name;
             document.getElementById('custPhone').value = c.phone || '';
             document.getElementById('custAddress').value = c.address || '';
+            document.getElementById('custRemark').value = c.remark || '';
         }
     }
     document.getElementById('customerModal').classList.add('show');
@@ -1549,6 +1555,7 @@ function saveCustomer() {
         name: name,
         phone: document.getElementById('custPhone').value.trim(),
         address: document.getElementById('custAddress').value.trim(),
+        remark: document.getElementById('custRemark').value.trim(),
         balance: 0,
         totalSpent: 0,
         totalPaid: 0
@@ -1561,6 +1568,10 @@ function saveCustomer() {
             customerData.balance = customers[idx].balance;
             customerData.totalSpent = customers[idx].totalSpent;
             customerData.totalPaid = customers[idx].totalPaid;
+            // Preserve remark if empty in edit mode
+            if (!customerData.remark) {
+                customerData.remark = customers[idx].remark || '';
+            }
             customers[idx] = customerData;
         }
     } else {
@@ -1593,6 +1604,7 @@ function renderCustomerGrid() {
                 <br>
                 累计消费：¥${(c.totalSpent||0).toFixed(2)} | 累计来款：¥${(c.totalPaid||0).toFixed(2)}
                 ${c.totalPaid > 0 ? `<br><span style="font-size:12px;color:${c.balance<=0?'#28a745':'#e0a800'};">最近收款：查看详情</span>` : ''}
+                ${c.remark ? `<div style="margin-top:6px;padding:5px 8px;background:#fff8e1;border-left:3px solid #ffc107;font-size:12px;color:#666;line-height:1.5;">📝 ${escapeHtml(c.remark)}</div>` : ''}
             </div>
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();quickNewOrder('${c.id}')">快速开单</button>
