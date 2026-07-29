@@ -75,6 +75,11 @@ tr:hover td{background:#fff8f0}
 .btn-generate{display:inline-block;padding:14px 40px;font-size:16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2c3e50,#34495e);border:none;border-radius:10px;cursor:pointer;transition:all .2s;margin-bottom:20px;letter-spacing:1px}
 .btn-generate:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .btn-generate:active{transform:translateY(0)}
+.recommend-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.recommend-count{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border:1px solid #dde;border-radius:8px;font-size:13px;color:#445}
+.recommend-count select{height:34px;padding:0 10px;border:1px solid #ccd;border-radius:6px;background:#fff;font-size:14px;color:#223}
+.btn-copy{display:inline-block;padding:12px 22px;font-size:14px;font-weight:700;color:#2c3e50;background:#fff;border:1px solid #b8c2d8;border-radius:8px;cursor:pointer;transition:all .2s}
+.btn-copy:hover{background:#f4f7ff;border-color:#7d8db5}
 .recommend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
 .recommend-card{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #eee;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .recommend-card .idx{min-width:60px;padding:6px 10px;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;text-align:center}
@@ -214,7 +219,15 @@ tr:hover td{background:#fff8f0}
           <span class="strategy-tag tag-entropy">信息熵优化 (第9组)</span>
           <span class="strategy-tag tag-game">博弈论分散 (第10组)</span>
         </div>
-        <button class="btn-generate" onclick="generateSSQ()">⚡ 运行 9 大数学模型 · 生成 10 组推荐</button>
+        <div class="recommend-actions">
+          <label class="recommend-count">生成组数
+            <select id="ssq-group-count">
+              <option value="5">5组</option><option value="10" selected>10组</option><option value="15">15组</option><option value="20">20组</option><option value="25">25组</option><option value="30">30组</option><option value="35">35组</option><option value="40">40组</option><option value="45">45组</option><option value="50">50组</option>
+            </select>
+          </label>
+          <button class="btn-generate" onclick="generateSSQ()">运行 18+ 数学模型 · 生成推荐</button>
+          <button class="btn-copy" onclick="copyRecommendations(false)">复制数字</button>
+        </div>
         <div class="recommend-grid" id="ssq-recommend"></div>
       </div>
     </div>
@@ -273,7 +286,15 @@ tr:hover td{background:#fff8f0}
           <span class="strategy-tag tag-entropy">信息熵优化 (第9组)</span>
           <span class="strategy-tag tag-game">博弈论分散 (第10组)</span>
         </div>
-        <button class="btn-generate" onclick="generateDLT()">⚡ 运行 9 大数学模型 · 生成 10 组推荐</button>
+        <div class="recommend-actions">
+          <label class="recommend-count">生成组数
+            <select id="dlt-group-count">
+              <option value="5">5组</option><option value="10" selected>10组</option><option value="15">15组</option><option value="20">20组</option><option value="25">25组</option><option value="30">30组</option><option value="35">35组</option><option value="40">40组</option><option value="45">45组</option><option value="50">50组</option>
+            </select>
+          </label>
+          <button class="btn-generate" onclick="generateDLT()">运行 18+ 数学模型 · 生成推荐</button>
+          <button class="btn-copy" onclick="copyRecommendations(true)">复制数字</button>
+        </div>
         <div class="recommend-grid" id="dlt-recommend"></div>
       </div>
     </div>
@@ -518,7 +539,14 @@ function gameTheoryPenalty(picked,totalNums){
   return penalty;
 }
 
-function generateRecommend(mathResult,totalNums,pickCount,secFreq,secPickCount,containerId,isDLT){
+function getSelectedGroupCount(isDLT){
+  const el=document.getElementById(isDLT?'dlt-group-count':'ssq-group-count');
+  const raw=el?parseInt(el.value,10):10;
+  const stepped=Math.round((raw||10)/5)*5;
+  return Math.max(5,Math.min(50,stepped));
+}
+
+function generateRecommend(mathResult,totalNums,pickCount,secFreq,secPickCount,containerId,isDLT,groupCount=10){
   const {scores}=mathResult;
   const maxC=Math.max(...scores.map(s=>s.composite));
   const wFreq=scores.map(s=>Math.pow(s.freq+1,1.8));
@@ -552,21 +580,31 @@ function generateRecommend(mathResult,totalNums,pickCount,secFreq,secPickCount,c
     {label:'多目标优化',cls:'idx-game',mainW:wEv,secW:secBase}
   ];
   const groups=[];
-  for(let g=0;g<10;g++){
-    const strat=strategies[g];
-    let mainPicked=pickUnique(strat.mainW,pickCount);
-    const secPicked=pickUnique(strat.secW,secPickCount);
-    if(strat.label==='多目标优化'){
-      let bestPicked=mainPicked;let bestPenalty=Infinity;
-      for(let attempt=0;attempt<80;attempt++){
-        const candidate=pickUnique(strat.mainW,pickCount);
-        const p=gameTheoryPenalty(candidate,totalNums);
-        if(p<bestPenalty){bestPenalty=p;bestPicked=candidate}
+  const seen=new Set();
+  for(let g=0;g<groupCount;g++){
+    const strat=strategies[g%strategies.length];
+    let finalMain=[],finalSec=[],finalKey='';
+    for(let retry=0;retry<40;retry++){
+      let mainPicked=pickUnique(strat.mainW,pickCount);
+      const secPicked=pickUnique(strat.secW,secPickCount);
+      if(strat.label==='多目标优化'){
+        let bestPicked=mainPicked;let bestPenalty=Infinity;
+        for(let attempt=0;attempt<80;attempt++){
+          const candidate=pickUnique(strat.mainW,pickCount);
+          const p=gameTheoryPenalty(candidate,totalNums);
+          if(p<bestPenalty){bestPenalty=p;bestPicked=candidate}
+        }
+        mainPicked=bestPicked;
       }
-      mainPicked=bestPicked;
+      finalMain=mainPicked;
+      finalSec=secPicked;
+      finalKey=[...finalMain,...finalSec].join('-');
+      if(!seen.has(finalKey))break;
     }
-    groups.push({group:[...mainPicked,...secPicked],strategy:strat.label,cls:strat.cls});
+    seen.add(finalKey);
+    groups.push({group:[...finalMain,...finalSec],strategy:strat.label,cls:strat.cls});
   }
+  if(isDLT)window._lastDLTGroups=groups;else window._lastSSQGroups=groups;
   renderRecommendCardsProper(containerId,groups,isDLT);
 }
 function dataFor(isDLT){return isDLT?DLT_DATA:SSQ_DATA}
@@ -579,6 +617,46 @@ function renderRecommendCardsProper(cid,groups,isDLT){
     const sec=g.group.slice(mainCnt).map(n=>`<span class="ball ball-blue">${String(n).padStart(2,'0')}</span>`).join('');
     return`<div class="recommend-card"><div class="idx ${g.cls}">#${i+1}<span class="strat">${g.strategy}</span></div><div class="nums">${main}<span class="sep">|</span>${sec}</div></div>`;
   }).join('');
+}
+
+function formatRecommendationText(groups){
+  return groups.map(g=>g.group.map(n=>String(n)).join(', ')).join('\n');
+}
+
+function copyTextFallback(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.setAttribute('readonly','');
+  ta.style.position='fixed';
+  ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  const ok=document.execCommand('copy');
+  document.body.removeChild(ta);
+  return ok;
+}
+
+function flashCopyButton(isDLT,ok){
+  const section=document.getElementById(isDLT?'dlt-recommend':'ssq-recommend')?.closest('.recommend-section');
+  const btn=section?.querySelector('.btn-copy');
+  if(!btn)return;
+  const old=btn.textContent;
+  btn.textContent=ok?'已复制':'复制失败';
+  setTimeout(()=>btn.textContent=old,1200);
+}
+
+function copyRecommendations(isDLT){
+  let groups=isDLT?window._lastDLTGroups:window._lastSSQGroups;
+  if(!groups||!groups.length){
+    if(isDLT)generateDLT();else generateSSQ();
+    groups=isDLT?window._lastDLTGroups:window._lastSSQGroups;
+  }
+  const text=formatRecommendationText(groups||[]);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>flashCopyButton(isDLT,true)).catch(()=>flashCopyButton(isDLT,copyTextFallback(text)));
+  }else{
+    flashCopyButton(isDLT,copyTextFallback(text));
+  }
 }
 
 // ==================== UI COPY REFRESH ====================
@@ -619,8 +697,8 @@ function refreshUiCopy(){
   if(tabs[0])tabs[0].textContent='双色球';
   if(tabs[1])tabs[1].textContent='大乐透';
   const titles=[
-    '红球 1-33 出现频率（近100期）','蓝球 1-16 出现频率','红球复合评分矩阵（18+模型加权）','开奖记录','18+数学复合引擎 · 生成10组推荐',
-    '前区 1-35 出现频率（近100期）','后区 1-12 出现频率','前区复合评分矩阵（18+模型加权）','开奖记录','18+数学复合引擎 · 生成10组推荐'
+    '红球 1-33 出现频率（近100期）','蓝球 1-16 出现频率','红球复合评分矩阵（18+模型加权）','开奖记录','18+数学复合引擎 · 自定义组数推荐',
+    '前区 1-35 出现频率（近100期）','后区 1-12 出现频率','前区复合评分矩阵（18+模型加权）','开奖记录','18+数学复合引擎 · 自定义组数推荐'
   ];
   document.querySelectorAll('.section-title').forEach((el,i)=>{if(titles[i])el.textContent=titles[i]});
   const labels=['最热号码','最冷号码','理论期望次数','频率标准差','最热号码','最冷号码','理论期望次数','频率标准差'];
@@ -641,7 +719,8 @@ function refreshUiCopy(){
     if(s)s.textContent='18+数学模型公式说明（点击展开）';
     if(g)g.innerHTML=formulaCardsHtml(i===0?'ssq':'dlt');
   });
-  document.querySelectorAll('.btn-generate').forEach(btn=>btn.textContent='运行 18+ 数学模型 · 生成 10 组推荐');
+  document.querySelectorAll('.btn-generate').forEach(btn=>btn.textContent='运行 18+ 数学模型 · 生成推荐');
+  document.querySelectorAll('.btn-copy').forEach(btn=>btn.textContent='复制数字');
   document.querySelectorAll('.strategy-tags').forEach(box=>box.innerHTML=[
     '<span class="strategy-tag tag-freq">频率加权</span>',
     '<span class="strategy-tag tag-bayes">贝叶斯后验</span>',
@@ -714,13 +793,13 @@ function initDLT(){
 function generateSSQ(){
   const math=window._ssqMath;
   const bF=window._ssqBlueF;
-  generateRecommend(math,33,6,bF,1,'ssq-recommend',false);
+  generateRecommend(math,33,6,bF,1,'ssq-recommend',false,getSelectedGroupCount(false));
 }
 
 function generateDLT(){
   const math=window._dltMath;
   const bF=window._dltBackF;
-  generateRecommend(math,35,5,bF,2,'dlt-recommend',true);
+  generateRecommend(math,35,5,bF,2,'dlt-recommend',true,getSelectedGroupCount(true));
 }
 
 function switchTab(type){
