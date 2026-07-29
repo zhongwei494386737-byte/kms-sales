@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双色球 & 大乐透 近100期高等数学分析</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;color:#333;line-height:1.6}
+.header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:28px 0;text-align:center;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+.header h1{font-size:26px;letter-spacing:1px}
+.header p{font-size:14px;opacity:.7;margin-top:6px}
+.header .math-badge{display:inline-block;margin-top:8px;padding:4px 16px;background:rgba(255,255,255,.12);border-radius:20px;font-size:12px;letter-spacing:.5px}
+.container{max-width:1280px;margin:0 auto;padding:20px}
+.tabs{display:flex;gap:0;margin-bottom:0;background:#fff;border-radius:10px 10px 0 0;overflow:hidden;box-shadow:0 -1px 6px rgba(0,0,0,.06)}
+.tab{flex:1;padding:14px 20px;text-align:center;cursor:pointer;font-size:16px;font-weight:600;color:#888;background:#fafafa;border:none;transition:all .2s}
+.tab:hover{background:#f0f0f0}
+.tab.active{color:#fff;background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.tab.active.dlt{background:linear-gradient(135deg,#2980b9,#1a5276)}
+.content{background:#fff;border-radius:0 0 10px 10px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.section-title{font-size:18px;font-weight:700;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e74c3c;display:flex;align-items:center;gap:8px}
+.section-title.dlt{border-color:#2980b9}
+.section-title .icon{font-size:22px}
+.freq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px;margin-bottom:24px}
+.freq-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-weight:700;font-size:13px;border:2px solid transparent;transition:transform .15s;cursor:pointer;position:relative}
+.freq-cell:hover{transform:scale(1.15);z-index:10}
+.freq-cell .num{font-size:16px}
+.freq-cell .cnt{font-size:10px;opacity:.7}
+.freq-cell.hot{background:#ffe0e0;border-color:#e74c3c;color:#c0392b}
+.freq-cell.warm{background:#fff3e0;border-color:#e67e22;color:#d35400}
+.freq-cell.cool{background:#e8f5e9;border-color:#27ae60;color:#1e8449}
+.freq-cell.cold{background:#e3f2fd;border-color:#2980b9;color:#1a5276}
+.freq-cell.zero{background:#f5f5f5;border-color:#bbb;color:#999}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;font-size:13px;align-items:center}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-dot{width:14px;height:14px;border-radius:4px;border:2px solid}
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.stat-card{flex:1;min-width:130px;background:#f8f9fa;border-radius:8px;padding:14px;text-align:center;border:1px solid #eee}
+.stat-card .value{font-size:22px;font-weight:700;color:#e74c3c}
+.stat-card .value.dlt{color:#2980b9}
+.stat-card .label{font-size:12px;color:#888;margin-top:2px}
+.table-wrap{max-height:400px;overflow-y:auto;border:1px solid #eee;border-radius:8px;margin-bottom:24px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{position:sticky;top:0;z-index:5}
+th{background:#e74c3c;color:#fff;padding:10px 8px;text-align:center;font-weight:600}
+th.dlt-th{background:#2980b9}
+td{padding:7px 8px;text-align:center;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#fff8f0}
+.ball{display:inline-block;width:26px;height:26px;line-height:26px;border-radius:50%;font-weight:700;font-size:12px;text-align:center;margin:1px}
+.ball-red{background:#e74c3c;color:#fff}
+.ball-blue{background:#2980b9;color:#fff}
+.red-group{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+
+/* Math Score Table */
+.math-table-wrap{max-height:500px;overflow-y:auto;border:1px solid #eee;border-radius:8px;margin-bottom:16px}
+.math-table-wrap table{font-size:12px}
+.math-table-wrap th{background:#2c3e50;font-size:11px;padding:8px 4px}
+.math-table-wrap td{padding:6px 4px;font-size:12px}
+.score-cell{font-weight:700;border-radius:4px;padding:2px 4px}
+.score-high{background:#d4edda;color:#155724}
+.score-mid{background:#fff3cd;color:#856404}
+.score-low{background:#f8d7da;color:#721c24}
+
+/* Recommend */
+.recommend-section{margin-top:24px;padding:20px;background:linear-gradient(135deg,#f8f9ff,#f0f2ff);border-radius:10px;border:1px solid #dde}
+.recommend-section .strategy-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.strategy-tag{padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.tag-freq{background:#ffe0e0;color:#c0392b}
+.tag-ev{background:#e8daef;color:#6c3483}
+.tag-miss{background:#d5f5e3;color:#1e8449}
+.tag-markov{background:#d6eaf8;color:#1a5276}
+.tag-game{background:#fdebd0;color:#b9770e}
+.tag-entropy{background:#e5e8e8;color:#2c3e50}
+.tag-bayes{background:#f5b7b1;color:#922b21}
+.btn-generate{display:inline-block;padding:14px 40px;font-size:16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2c3e50,#34495e);border:none;border-radius:10px;cursor:pointer;transition:all .2s;margin-bottom:20px;letter-spacing:1px}
+.btn-generate:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.btn-generate:active{transform:translateY(0)}
+.recommend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.recommend-card{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #eee;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.recommend-card .idx{min-width:60px;padding:6px 10px;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;text-align:center}
+.recommend-card .idx .strat{font-size:10px;opacity:.85;margin-top:2px}
+.idx-freq{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.idx-ev{background:linear-gradient(135deg,#8e44ad,#6c3483)}
+.idx-miss{background:linear-gradient(135deg,#27ae60,#1e8449)}
+.idx-markov{background:linear-gradient(135deg,#2980b9,#1a5276)}
+.idx-game{background:linear-gradient(135deg,#e67e22,#b9770e)}
+.idx-entropy{background:linear-gradient(135deg,#5d6d7e,#2c3e50)}
+.idx-bayes{background:linear-gradient(135deg,#c0392b,#922b21)}
+.recommend-card .nums{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.recommend-card .nums .sep{color:#ccc;font-weight:700;margin:0 3px}
+
+/* Math Formula Info */
+.formula-info{background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:20px;border:1px solid #e0e0e0}
+.formula-info summary{font-weight:700;font-size:15px;cursor:pointer;color:#2c3e50;margin-bottom:12px}
+.formula-info .math-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.math-card{background:#fff;border-radius:8px;padding:12px;border:1px solid #eee}
+.math-card .math-name{font-weight:700;font-size:13px;margin-bottom:4px;color:#2c3e50}
+.math-card .math-formula{font-family:"Courier New",monospace;font-size:11px;color:#666;background:#f5f5f5;padding:4px 8px;border-radius:4px;margin:4px 0;word-break:break-all}
+.math-card .math-desc{font-size:11px;color:#888;line-height:1.5}
+
+.disclaimer{margin-top:24px;padding:14px 18px;background:#fffbe6;border:1px solid #ffe58f;border-radius:8px;font-size:12px;color:#ad6800;text-align:center}
+.data-source{text-align:center;color:#999;font-size:12px;margin-top:12px}
+.hidden{display:none}
+.composite-bar{height:6px;border-radius:3px;background:#eee;margin-top:2px;overflow:hidden}
+.composite-bar .fill{height:100%;border-radius:3px;transition:width .3s}
+.fill-red{background:#e74c3c}
+.fill-blue{background:#2980b9}
+
+@media(max-width:768px){.container{padding:10px}.content{padding:14px}.freq-grid{grid-template-columns:repeat(auto-fill,minmax(42px,1fr))}.recommend-grid{grid-template-columns:1fr}.math-table-wrap table{font-size:10px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>双色球 & 大乐透 · 高等数学分析系统</h1>
+  <p>概率论 · 统计学 · 期望值EV · 排列组合 · 遗漏分析 · 马尔可夫链 · 信息熵 · 贝叶斯推断 · 博弈论</p>
+  <span class="math-badge">9大数学模型复合评分</span>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('ssq')">双色球</button>
+    <button class="tab" onclick="switchTab('dlt')">大乐透</button>
+  </div>
+  <div class="content">
+    <!-- ========== 双色球面板 ========== -->
+    <div id="panel-ssq">
+      <div class="section-title"><span class="icon">🔴</span> 红球 1-33 出现频率（100期）</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#ffe0e0;border-color:#e74c3c"></span> 高频 ≥20</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#fff3e0;border-color:#e67e22"></span> 中频 16-19</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#e8f5e9;border-color:#27ae60"></span> 低频 13-15</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#e3f2fd;border-color:#2980b9"></span> 极低 ≤12</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f5f5f5;border-color:#bbb"></span> 未出现</span>
+      </div>
+      <div class="freq-grid" id="ssq-red-grid"></div>
+      <div class="section-title"><span class="icon">🔵</span> 蓝球 1-16 出现频率</div>
+      <div class="freq-grid" id="ssq-blue-grid"></div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="value" id="ssq-hot-num">-</div><div class="label">最热号码</div></div>
+        <div class="stat-card"><div class="value" id="ssq-cold-num">-</div><div class="label">最冷号码</div></div>
+        <div class="stat-card"><div class="value" id="ssq-theory">-</div><div class="label">理论期望次数</div></div>
+        <div class="stat-card"><div class="value" id="ssq-std">-</div><div class="label">频率标准差</div></div>
+      </div>
+
+      <!-- 数学公式说明 -->
+      <details class="formula-info">
+        <summary>📐 9大数学模型公式说明（点击展开）</summary>
+        <div class="math-grid">
+          <div class="math-card">
+            <div class="math-name">① 概率频率模型</div>
+            <div class="math-formula">P(n) = f(n) / N</div>
+            <div class="math-desc">统计100期实际出现频率，对应理论概率 P_theory = k/T（双色球红球k=6,T=33）</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">② Z-Score 标准化</div>
+            <div class="math-formula">Z(n) = (f(n) - μ) / σ</div>
+            <div class="math-desc">μ=期望次数(N*k/T)，σ=标准差。|Z|>1.96表示显著偏离</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">③ 数学期望 EV</div>
+            <div class="math-formula">EV(n) = Σ P(win)×Payout</div>
+            <div class="math-desc">综合频率×理论收益率加权，正向EV号码优先</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">④ 排列组合</div>
+            <div class="math-formula">C(T,k) = T!/(k!(T-k)!)</div>
+            <div class="math-desc">双色球红球 C(33,6)=1,107,568，每组理论概率1/1,107,568</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">⑤ 遗漏分析</div>
+            <div class="math-formula">P_miss(n) = (1-p)^m</div>
+            <div class="math-desc">连续m期未出的概率，m越大回补期望越高（赌徒谬误修正）</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">⑥ 马尔可夫链</div>
+            <div class="math-formula">P(X_t|X_{t-1}) 转移矩阵</div>
+            <div class="math-desc">近20期状态转移概率，捕捉短期趋势延续性</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">⑦ 信息熵</div>
+            <div class="math-formula">H = -Σ p(n)·log₂ p(n)</div>
+            <div class="math-desc">熵越高号码越随机，低熵号码有聚集趋势</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">⑧ 贝叶斯推断</div>
+            <div class="math-formula">P(θ|D) ∝ P(D|θ)·P(θ)</div>
+            <div class="math-desc">以均匀先验更新后验概率，动态修正各号码出现信念</div>
+          </div>
+          <div class="math-card">
+            <div class="math-name">⑨ 博弈论优化</div>
+            <div class="math-formula">max ΣU(s_i) s.t. diversity</div>
+            <div class="math-desc">避免连号/同尾/全奇偶等常见模式，降低多人同选分摊风险</div>
+          </div>
+        </div>
+      </details>
+
+      <div class="section-title">📊 红球复合评分矩阵（9模型加权）</div>
+      <div class="math-table-wrap" style="margin-bottom:8px"><table><thead><tr>
+        <th>号码</th><th>频率</th><th>Z-Score</th><th>EV分</th><th>遗漏值</th><th>马尔可夫</th><th>熵贡献</th><th>贝叶斯</th><th>复合分</th>
+      </tr></thead><tbody id="ssq-math-scores"></tbody></table></div>
+
+      <div class="section-title">📋 开奖记录</div>
+      <div class="table-wrap"><table><thead><tr><th>期号</th><th>日期</th><th>红球</th><th>蓝球</th></tr></thead><tbody id="ssq-history"></tbody></table></div>
+
+      <div class="recommend-section">
+        <div class="section-title" style="border-color:#2c3e50"><span class="icon">🧠</span> 高等数学复合引擎 · 生成10组推荐</div>
+        <div class="strategy-tags">
+          <span class="strategy-tag tag-freq">频率加权 (第1-2组)</span>
+          <span class="strategy-tag tag-ev">期望值最优 (第3-4组)</span>
+          <span class="strategy-tag tag-miss">遗漏回补 (第5-6组)</span>
+          <span class="strategy-tag tag-markov">马尔可夫趋势 (第7组)</span>
+          <span class="strategy-tag tag-bayes">贝叶斯后验 (第8组)</span>
+          <span class="strategy-tag tag-entropy">信息熵优化 (第9组)</span>
+          <span class="strategy-tag tag-game">博弈论分散 (第10组)</span>
+        </div>
+        <button class="btn-generate" onclick="generateSSQ()">⚡ 运行 9 大数学模型 · 生成 10 组推荐</button>
+        <div class="recommend-grid" id="ssq-recommend"></div>
+      </div>
+    </div>
+
+    <!-- ========== 大乐透面板 ========== -->
+    <div id="panel-dlt" class="hidden">
+      <div class="section-title dlt"><span class="icon">🔴</span> 前区 1-35 出现频率</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#ffe0e0;border-color:#e74c3c"></span> 高频 ≥18</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#fff3e0;border-color:#e67e22"></span> 中频 14-17</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#e8f5e9;border-color:#27ae60"></span> 低频 11-13</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#e3f2fd;border-color:#2980b9"></span> 极低 ≤10</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f5f5f5;border-color:#bbb"></span> 未出现</span>
+      </div>
+      <div class="freq-grid" id="dlt-front-grid"></div>
+      <div class="section-title dlt"><span class="icon">🔵</span> 后区 1-12 出现频率</div>
+      <div class="freq-grid" id="dlt-back-grid"></div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="value dlt" id="dlt-hot-num">-</div><div class="label">最热号码</div></div>
+        <div class="stat-card"><div class="value dlt" id="dlt-cold-num">-</div><div class="label">最冷号码</div></div>
+        <div class="stat-card"><div class="value dlt" id="dlt-theory">-</div><div class="label">理论期望次数</div></div>
+        <div class="stat-card"><div class="value dlt" id="dlt-std">-</div><div class="label">频率标准差</div></div>
+      </div>
+
+      <details class="formula-info">
+        <summary>📐 9大数学模型公式说明（点击展开）</summary>
+        <div class="math-grid">
+          <div class="math-card"><div class="math-name">① 概率频率模型</div><div class="math-formula">P(n) = f(n) / N</div><div class="math-desc">100期实际频率，理论概率 P=k/T（大乐透前区k=5,T=35）</div></div>
+          <div class="math-card"><div class="math-name">② Z-Score 标准化</div><div class="math-formula">Z(n) = (f(n) - μ) / σ</div><div class="math-desc">μ=N*k/T≈14.29，σ标准差测偏离程度</div></div>
+          <div class="math-card"><div class="math-name">③ 数学期望 EV</div><div class="math-formula">EV(n) = Σ P(win)×Payout</div><div class="math-desc">频率×理论收益率加权</div></div>
+          <div class="math-card"><div class="math-name">④ 排列组合</div><div class="math-formula">C(35,5) = 324,632</div><div class="math-desc">前区5/35，后区C(12,2)=66，总组合21,425,712</div></div>
+          <div class="math-card"><div class="math-name">⑤ 遗漏分析</div><div class="math-formula">P_miss(n) = (1-p)^m</div><div class="math-desc">遗漏m期望回补概率</div></div>
+          <div class="math-card"><div class="math-name">⑥ 马尔可夫链</div><div class="math-formula">P(X_t|X_{t-1})</div><div class="math-desc">近20期转移矩阵捕捉趋势</div></div>
+          <div class="math-card"><div class="math-name">⑦ 信息熵</div><div class="math-formula">H = -Σ p·log₂p</div><div class="math-desc">衡量号码随机性</div></div>
+          <div class="math-card"><div class="math-name">⑧ 贝叶斯推断</div><div class="math-formula">P(θ|D) ∝ P(D|θ)P(θ)</div><div class="math-desc">先验→后验动态更新</div></div>
+          <div class="math-card"><div class="math-name">⑨ 博弈论优化</div><div class="math-formula">max ΣU(s_i)</div><div class="math-desc">避免常见模式，降低分摊风险</div></div>
+        </div>
+      </details>
+
+      <div class="section-title dlt">📊 前区复合评分矩阵（9模型加权）</div>
+      <div class="math-table-wrap" style="margin-bottom:8px"><table><thead><tr>
+        <th class="dlt-th">号码</th><th class="dlt-th">频率</th><th class="dlt-th">Z-Score</th><th class="dlt-th">EV分</th><th class="dlt-th">遗漏值</th><th class="dlt-th">马尔可夫</th><th class="dlt-th">熵贡献</th><th class="dlt-th">贝叶斯</th><th class="dlt-th">复合分</th>
+      </tr></thead><tbody id="dlt-math-scores"></tbody></table></div>
+
+      <div class="section-title dlt">📋 开奖记录</div>
+      <div class="table-wrap"><table><thead><tr><th class="dlt-th">期号</th><th class="dlt-th">日期</th><th class="dlt-th">前区</th><th class="dlt-th">后区</th></tr></thead><tbody id="dlt-history"></tbody></table></div>
+
+      <div class="recommend-section">
+        <div class="section-title dlt" style="border-color:#2c3e50"><span class="icon">🧠</span> 高等数学复合引擎 · 生成10组推荐</div>
+        <div class="strategy-tags">
+          <span class="strategy-tag tag-freq">频率加权 (第1-2组)</span>
+          <span class="strategy-tag tag-ev">期望值最优 (第3-4组)</span>
+          <span class="strategy-tag tag-miss">遗漏回补 (第5-6组)</span>
+          <span class="strategy-tag tag-markov">马尔可夫趋势 (第7组)</span>
+          <span class="strategy-tag tag-bayes">贝叶斯后验 (第8组)</span>
+          <span class="strategy-tag tag-entropy">信息熵优化 (第9组)</span>
+          <span class="strategy-tag tag-game">博弈论分散 (第10组)</span>
+        </div>
+        <button class="btn-generate" onclick="generateDLT()">⚡ 运行 9 大数学模型 · 生成 10 组推荐</button>
+        <div class="recommend-grid" id="dlt-recommend"></div>
+      </div>
+    </div>
+  </div>
+  <div class="disclaimer">⚠️ 免责声明：本工具基于9大高等数学模型对历史数据进行统计分析，推荐号码仅供参考，不构成任何购彩建议。彩票开奖为独立随机事件，历史数据不代表未来结果。</div>
+  <div class="data-source">数据来源：中国福利彩票官网(cwl.gov.cn) & 彩吧助手 · 统计截止 2026-07-28 · 算法引擎 v2.0</div>
+</div>
+
+<script>
+// ==================== DATA ====================
+const SSQ_DATA=[{code:"2026086",date:"2026-07-28",red:[2,5,14,25,30,32],blue:5},{code:"2026085",date:"2026-07-26",red:[6,9,13,17,24,28],blue:15},{code:"2026084",date:"2026-07-23",red:[1,5,6,10,12,16],blue:5},{code:"2026083",date:"2026-07-21",red:[7,14,15,23,28,33],blue:3},{code:"2026082",date:"2026-07-19",red:[5,7,10,14,21,28],blue:4},{code:"2026081",date:"2026-07-16",red:[6,10,12,15,24,27],blue:12},{code:"2026080",date:"2026-07-14",red:[4,5,11,19,27,32],blue:1},{code:"2026079",date:"2026-07-12",red:[1,11,17,22,24,29],blue:4},{code:"2026078",date:"2026-07-09",red:[7,11,14,16,27,28],blue:6},{code:"2026077",date:"2026-07-07",red:[1,4,5,14,18,25],blue:4},{code:"2026076",date:"2026-07-05",red:[1,3,19,20,24,25],blue:7},{code:"2026075",date:"2026-07-02",red:[8,12,18,21,24,30],blue:1},{code:"2026074",date:"2026-06-30",red:[2,23,24,26,28,32],blue:4},{code:"2026073",date:"2026-06-28",red:[9,10,13,16,19,21],blue:8},{code:"2026072",date:"2026-06-25",red:[7,8,12,15,17,21],blue:1},{code:"2026071",date:"2026-06-23",red:[3,8,19,25,31,33],blue:5},{code:"2026070",date:"2026-06-21",red:[3,6,8,14,26,27],blue:8},{code:"2026069",date:"2026-06-18",red:[12,14,16,17,18,32],blue:8},{code:"2026068",date:"2026-06-16",red:[3,5,16,18,29,32],blue:4},{code:"2026067",date:"2026-06-14",red:[4,19,27,29,30,32],blue:13},{code:"2026066",date:"2026-06-11",red:[5,11,21,23,24,29],blue:16},{code:"2026065",date:"2026-06-09",red:[7,8,16,24,30,32],blue:2},{code:"2026064",date:"2026-06-07",red:[1,9,15,18,29,33],blue:15},{code:"2026063",date:"2026-06-04",red:[2,8,25,28,30,31],blue:2},{code:"2026062",date:"2026-06-02",red:[2,4,7,14,28,29],blue:9},{code:"2026061",date:"2026-05-31",red:[1,4,5,15,23,28],blue:7},{code:"2026060",date:"2026-05-28",red:[7,9,10,16,22,27],blue:11},{code:"2026059",date:"2026-05-26",red:[8,16,26,28,29,30],blue:15},{code:"2026058",date:"2026-05-24",red:[1,4,7,21,29,30],blue:1},{code:"2026057",date:"2026-05-21",red:[1,10,22,24,28,30],blue:7},{code:"2026056",date:"2026-05-19",red:[10,19,21,22,31,33],blue:5},{code:"2026055",date:"2026-05-17",red:[4,11,24,25,32,33],blue:13},{code:"2026054",date:"2026-05-14",red:[13,20,25,29,30,33],blue:2},{code:"2026053",date:"2026-05-12",red:[1,2,3,8,13,14],blue:2},{code:"2026052",date:"2026-05-10",red:[1,3,11,22,26,31],blue:11},{code:"2026051",date:"2026-05-07",red:[9,14,15,16,29,30],blue:10},{code:"2026050",date:"2026-05-05",red:[6,9,25,27,28,30],blue:3},{code:"2026049",date:"2026-05-03",red:[3,4,14,15,18,20],blue:2},{code:"2026048",date:"2026-04-30",red:[9,15,18,24,28,33],blue:1},{code:"2026047",date:"2026-04-28",red:[7,16,21,24,27,30],blue:7},{code:"2026046",date:"2026-04-26",red:[2,9,10,24,31,33],blue:16},{code:"2026045",date:"2026-04-23",red:[4,11,15,17,24,30],blue:15},{code:"2026044",date:"2026-04-21",red:[2,14,17,18,22,30],blue:1},{code:"2026043",date:"2026-04-19",red:[6,9,14,16,25,32],blue:16},{code:"2026042",date:"2026-04-16",red:[2,7,12,19,24,31],blue:10},{code:"2026041",date:"2026-04-14",red:[2,8,10,17,19,24],blue:13},{code:"2026040",date:"2026-04-12",red:[3,4,14,22,23,33],blue:4},{code:"2026039",date:"2026-04-09",red:[8,17,18,21,25,30],blue:5},{code:"2026038",date:"2026-04-07",red:[1,2,13,23,25,27],blue:5},{code:"2026037",date:"2026-04-05",red:[11,22,27,29,31,33],blue:12},{code:"2026036",date:"2026-04-02",red:[6,10,12,15,22,28],blue:8},{code:"2026035",date:"2026-03-31",red:[2,6,12,24,25,32],blue:2},{code:"2026034",date:"2026-03-29",red:[1,3,7,13,22,23],blue:7},{code:"2026033",date:"2026-03-26",red:[3,6,13,21,28,29],blue:6},{code:"2026032",date:"2026-03-24",red:[1,3,11,18,31,33],blue:2},{code:"2026031",date:"2026-03-22",red:[3,10,12,13,18,33],blue:8},{code:"2026030",date:"2026-03-19",red:[10,11,14,19,22,24],blue:4},{code:"2026029",date:"2026-03-17",red:[6,19,22,23,28,31],blue:5},{code:"2026028",date:"2026-03-15",red:[2,6,9,17,25,28],blue:15},{code:"2026027",date:"2026-03-12",red:[2,13,17,18,25,26],blue:13},{code:"2026026",date:"2026-03-10",red:[2,9,16,22,25,29],blue:3},{code:"2026025",date:"2026-03-08",red:[2,3,15,20,23,24],blue:10},{code:"2026024",date:"2026-03-05",red:[1,2,13,21,23,29],blue:14},{code:"2026023",date:"2026-03-03",red:[1,3,8,10,23,29],blue:6},{code:"2026022",date:"2026-03-01",red:[15,18,23,25,28,32],blue:11},{code:"2026021",date:"2026-02-26",red:[3,13,25,26,30,31],blue:4},{code:"2026020",date:"2026-02-24",red:[1,13,14,21,24,30],blue:2},{code:"2026019",date:"2026-02-12",red:[7,8,16,17,18,30],blue:1},{code:"2026018",date:"2026-02-10",red:[11,15,17,22,25,30],blue:7},{code:"2026017",date:"2026-02-08",red:[1,3,5,18,29,32],blue:4},{code:"2026016",date:"2026-02-05",red:[4,5,9,10,27,30],blue:13},{code:"2026015",date:"2026-02-03",red:[7,10,13,22,27,31],blue:12},{code:"2026014",date:"2026-02-01",red:[7,13,19,22,26,32],blue:1},{code:"2026013",date:"2026-01-29",red:[4,9,12,13,16,20],blue:1},{code:"2026012",date:"2026-01-27",red:[3,5,7,16,20,24],blue:8},{code:"2026011",date:"2026-01-25",red:[2,3,4,20,31,32],blue:4},{code:"2026010",date:"2026-01-22",red:[4,9,10,15,19,26],blue:12},{code:"2026009",date:"2026-01-20",red:[3,6,13,19,23,25],blue:10},{code:"2026008",date:"2026-01-18",red:[6,9,16,27,31,33],blue:10},{code:"2026007",date:"2026-01-15",red:[9,13,19,27,29,30],blue:1},{code:"2026006",date:"2026-01-13",red:[2,6,22,23,24,28],blue:15},{code:"2026005",date:"2026-01-11",red:[1,20,22,27,30,33],blue:10},{code:"2026004",date:"2026-01-08",red:[3,7,8,9,18,32],blue:10},{code:"2026003",date:"2026-01-06",red:[5,6,9,21,28,30],blue:16},{code:"2026002",date:"2026-01-04",red:[1,5,7,18,30,32],blue:2},{code:"2026001",date:"2026-01-01",red:[2,6,11,12,13,33],blue:15},{code:"2025151",date:"2025-12-30",red:[8,9,14,22,28,30],blue:4},{code:"2025150",date:"2025-12-28",red:[6,13,17,19,24,31],blue:8},{code:"2025149",date:"2025-12-25",red:[1,2,4,6,22,30],blue:10},{code:"2025148",date:"2025-12-23",red:[3,4,9,10,15,22],blue:16},{code:"2025147",date:"2025-12-21",red:[1,3,5,8,22,33],blue:8},{code:"2025146",date:"2025-12-18",red:[5,7,12,24,26,28],blue:2},{code:"2025145",date:"2025-12-16",red:[11,12,15,18,25,32],blue:14},{code:"2025144",date:"2025-12-14",red:[1,8,15,20,26,33],blue:13},{code:"2025143",date:"2025-12-11",red:[2,9,12,13,15,24],blue:3},{code:"2025142",date:"2025-12-09",red:[2,13,15,23,27,31],blue:16},{code:"2025141",date:"2025-12-07",red:[2,4,5,10,12,13],blue:6},{code:"2025140",date:"2025-12-04",red:[1,3,4,12,18,24],blue:5},{code:"2025139",date:"2025-12-02",red:[2,5,17,22,30,33],blue:6},{code:"2025138",date:"2025-11-30",red:[10,13,14,23,24,27],blue:15},{code:"2025137",date:"2025-11-28",red:[2,8,11,23,27,29],blue:5},{code:"2025136",date:"2025-11-26",red:[8,10,14,23,28,32],blue:12},{code:"2025135",date:"2025-11-24",red:[1,2,5,9,25,32],blue:10},{code:"2025134",date:"2025-11-21",red:[3,5,9,13,26,29],blue:12},{code:"2025133",date:"2025-11-19",red:[5,14,17,19,20,33],blue:7},{code:"2025132",date:"2025-11-17",red:[4,8,10,21,23,32],blue:11},{code:"2025131",date:"2025-11-14",red:[3,13,14,18,24,31],blue:3},{code:"2025130",date:"2025-11-12",red:[1,5,8,14,19,23],blue:6},{code:"2025129",date:"2025-11-10",red:[3,4,7,13,20,30],blue:3},{code:"2025128",date:"2025-11-07",red:[2,10,18,19,24,27],blue:1},{code:"2025127",date:"2025-11-05",red:[3,9,15,17,19,28],blue:3},{code:"2025126",date:"2025-11-03",red:[2,12,13,16,19,25],blue:10},{code:"2025125",date:"2025-10-31",red:[3,9,12,13,26,32],blue:9},{code:"2025124",date:"2025-10-29",red:[1,2,18,19,21,33],blue:13},{code:"2025123",date:"2025-10-27",red:[7,9,23,24,25,26],blue:10}];
+const DLT_DATA=[{code:"2026084",date:"2026-07-27",front:[13,25,30,32,33],back:[4,5]},{code:"2026083",date:"2026-07-25",front:[14,15,16,23,26],back:[7,9]},{code:"2026082",date:"2026-07-22",front:[16,26,27,28,34],back:[2,6]},{code:"2026081",date:"2026-07-20",front:[8,16,18,24,34],back:[9,12]},{code:"2026080",date:"2026-07-18",front:[5,10,15,21,23],back:[7,8]},{code:"2026079",date:"2026-07-15",front:[6,8,23,26,27],back:[5,12]},{code:"2026078",date:"2026-07-13",front:[2,13,20,25,32],back:[8,11]},{code:"2026077",date:"2026-07-11",front:[4,14,19,24,27],back:[6,7]},{code:"2026076",date:"2026-07-08",front:[15,20,27,28,35],back:[2,11]},{code:"2026075",date:"2026-07-06",front:[1,6,16,18,26],back:[4,10]},{code:"2026074",date:"2026-07-04",front:[1,4,10,23,25],back:[1,12]},{code:"2026073",date:"2026-07-01",front:[4,10,22,30,33],back:[2,12]},{code:"2026072",date:"2026-06-29",front:[1,13,26,29,30],back:[9,11]},{code:"2026071",date:"2026-06-27",front:[5,13,22,26,32],back:[2,3]},{code:"2026070",date:"2026-06-24",front:[4,5,15,21,32],back:[2,11]},{code:"2026069",date:"2026-06-22",front:[12,19,21,24,29],back:[3,10]},{code:"2026068",date:"2026-06-20",front:[3,11,12,21,22],back:[6,10]},{code:"2026067",date:"2026-06-17",front:[6,16,18,19,28],back:[7,11]},{code:"2026066",date:"2026-06-15",front:[10,13,19,21,30],back:[4,5]},{code:"2026065",date:"2026-06-13",front:[4,11,12,13,25],back:[4,8]},{code:"2026064",date:"2026-06-10",front:[3,13,15,17,21],back:[2,7]},{code:"2026063",date:"2026-06-08",front:[3,15,20,29,31],back:[1,11]},{code:"2026062",date:"2026-06-06",front:[7,15,20,24,29],back:[4,10]},{code:"2026061",date:"2026-06-03",front:[10,12,26,31,35],back:[2,12]},{code:"2026060",date:"2026-06-01",front:[22,28,30,31,34],back:[1,5]},{code:"2026059",date:"2026-05-30",front:[6,13,17,19,26],back:[7,8]},{code:"2026058",date:"2026-05-27",front:[7,12,13,18,34],back:[1,5]},{code:"2026057",date:"2026-05-25",front:[23,25,26,27,34],back:[4,10]},{code:"2026056",date:"2026-05-23",front:[6,7,18,21,30],back:[1,5]},{code:"2026055",date:"2026-05-20",front:[9,10,20,33,35],back:[4,11]},{code:"2026054",date:"2026-05-18",front:[2,6,14,22,24],back:[8,11]},{code:"2026053",date:"2026-05-16",front:[2,9,14,20,31],back:[5,9]},{code:"2026052",date:"2026-05-13",front:[2,3,20,28,33],back:[2,12]},{code:"2026051",date:"2026-05-11",front:[13,18,28,32,33],back:[2,11]},{code:"2026050",date:"2026-05-09",front:[6,10,14,23,33],back:[8,10]},{code:"2026049",date:"2026-05-06",front:[1,6,14,15,17],back:[2,3]},{code:"2026048",date:"2026-05-04",front:[11,17,20,23,35],back:[1,10]},{code:"2026047",date:"2026-05-02",front:[9,20,21,23,28],back:[6,11]},{code:"2026046",date:"2026-04-29",front:[1,13,18,27,33],back:[4,7]},{code:"2026045",date:"2026-04-27",front:[1,15,21,26,33],back:[4,7]},{code:"2026044",date:"2026-04-25",front:[3,8,22,26,29],back:[7,10]},{code:"2026043",date:"2026-04-22",front:[8,12,14,19,22],back:[11,12]},{code:"2026042",date:"2026-04-20",front:[2,7,13,19,24],back:[3,8]},{code:"2026041",date:"2026-04-18",front:[24,25,27,29,34],back:[2,6]},{code:"2026040",date:"2026-04-15",front:[6,12,13,21,34],back:[8,9]},{code:"2026039",date:"2026-04-13",front:[9,11,20,26,27],back:[6,9]},{code:"2026038",date:"2026-04-11",front:[8,17,21,33,35],back:[6,7]},{code:"2026037",date:"2026-04-08",front:[7,12,13,28,32],back:[6,8]},{code:"2026036",date:"2026-04-06",front:[4,7,16,26,32],back:[5,8]},{code:"2026035",date:"2026-04-04",front:[2,22,30,33,34],back:[8,12]},{code:"2026034",date:"2026-04-01",front:[11,12,25,26,27],back:[8,11]},{code:"2026033",date:"2026-03-30",front:[3,5,7,9,18],back:[2,10]},{code:"2026032",date:"2026-03-28",front:[3,4,19,26,32],back:[1,12]},{code:"2026031",date:"2026-03-25",front:[6,8,22,29,34],back:[5,7]},{code:"2026030",date:"2026-03-23",front:[2,13,22,28,34],back:[5,12]},{code:"2026029",date:"2026-03-21",front:[3,5,17,33,35],back:[5,7]},{code:"2026028",date:"2026-03-18",front:[15,27,29,30,34],back:[1,10]},{code:"2026027",date:"2026-03-16",front:[9,10,11,12,16],back:[1,11]},{code:"2026026",date:"2026-03-14",front:[10,11,22,26,32],back:[1,8]},{code:"2026025",date:"2026-03-11",front:[3,15,24,28,29],back:[3,7]},{code:"2026024",date:"2026-03-09",front:[2,4,8,10,21],back:[9,12]},{code:"2026023",date:"2026-03-07",front:[9,25,26,27,28],back:[1,8]},{code:"2026022",date:"2026-03-04",front:[5,9,10,18,26],back:[5,6]},{code:"2026021",date:"2026-03-02",front:[5,8,12,14,17],back:[4,5]},{code:"2026020",date:"2026-02-28",front:[1,10,21,23,29],back:[10,12]},{code:"2026019",date:"2026-02-25",front:[12,13,14,16,31],back:[4,12]},{code:"2026018",date:"2026-02-11",front:[9,11,19,30,35],back:[1,12]},{code:"2026017",date:"2026-02-09",front:[4,5,10,23,31],back:[7,12]},{code:"2026016",date:"2026-02-07",front:[8,9,12,19,24],back:[1,6]},{code:"2026015",date:"2026-02-04",front:[1,4,10,13,17],back:[3,11]},{code:"2026014",date:"2026-02-02",front:[16,18,23,34,35],back:[1,6]},{code:"2026013",date:"2026-01-31",front:[3,5,6,23,26],back:[1,4]},{code:"2026012",date:"2026-01-28",front:[2,9,20,22,25],back:[1,6]},{code:"2026011",date:"2026-01-26",front:[14,21,23,29,33],back:[2,10]},{code:"2026010",date:"2026-01-24",front:[2,3,13,18,26],back:[2,9]},{code:"2026009",date:"2026-01-21",front:[5,12,13,14,33],back:[5,8]},{code:"2026008",date:"2026-01-19",front:[3,6,17,21,33],back:[5,11]},{code:"2026007",date:"2026-01-17",front:[1,3,13,20,26],back:[3,10]},{code:"2026006",date:"2026-01-14",front:[5,12,18,23,35],back:[6,12]},{code:"2026005",date:"2026-01-12",front:[2,4,16,23,35],back:[6,11]},{code:"2026004",date:"2026-01-10",front:[5,18,23,25,32],back:[5,9]},{code:"2026003",date:"2026-01-07",front:[2,9,11,15,16],back:[2,4]},{code:"2026002",date:"2026-01-05",front:[4,8,15,20,31],back:[7,8]},{code:"2026001",date:"2026-01-03",front:[7,9,23,27,32],back:[2,8]},{code:"2025150",date:"2025-12-31",front:[13,14,15,28,31],back:[1,5]},{code:"2025149",date:"2025-12-29",front:[24,26,30,31,32],back:[5,12]},{code:"2025148",date:"2025-12-27",front:[3,4,14,30,32],back:[8,12]},{code:"2025147",date:"2025-12-24",front:[6,16,21,25,33],back:[7,8]},{code:"2025146",date:"2025-12-22",front:[6,11,13,16,22],back:[2,3]},{code:"2025145",date:"2025-12-20",front:[5,7,20,22,25],back:[4,5]},{code:"2025144",date:"2025-12-17",front:[2,5,13,15,28],back:[5,8]},{code:"2025143",date:"2025-12-15",front:[3,4,18,24,29],back:[7,12]},{code:"2025142",date:"2025-12-13",front:[9,10,14,27,29],back:[2,9]},{code:"2025141",date:"2025-12-10",front:[4,9,24,28,29],back:[2,10]},{code:"2025140",date:"2025-12-08",front:[4,5,13,18,34],back:[2,8]},{code:"2025139",date:"2025-12-06",front:[8,18,22,30,35],back:[1,4]},{code:"2025138",date:"2025-12-03",front:[1,3,19,21,23],back:[7,11]},{code:"2025137",date:"2025-12-01",front:[7,8,9,11,22],back:[5,11]},{code:"2025136",date:"2025-11-29",front:[7,11,15,16,23],back:[9,11]},{code:"2025135",date:"2025-11-26",front:[2,10,16,28,32],back:[1,7]},{code:"2025134",date:"2025-11-24",front:[7,12,18,27,33],back:[9,10]},{code:"2025133",date:"2025-11-22",front:[4,11,23,27,35],back:[7,11]},{code:"2025132",date:"2025-11-19",front:[1,9,10,12,19],back:[6,7]},{code:"2025131",date:"2025-11-17",front:[3,8,25,29,32],back:[9,12]},{code:"2025130",date:"2025-11-15",front:[1,13,16,27,29],back:[2,11]},{code:"2025129",date:"2025-11-12",front:[3,9,14,28,35],back:[2,4]},{code:"2025128",date:"2025-11-10",front:[3,6,26,30,33],back:[11,12]},{code:"2025127",date:"2025-11-08",front:[4,5,19,28,29],back:[5,8]},{code:"2025126",date:"2025-11-05",front:[1,8,18,27,30],back:[6,7]},{code:"2025125",date:"2025-11-03",front:[10,11,13,19,35],back:[4,11]},{code:"2025124",date:"2025-11-01",front:[6,9,14,26,27],back:[8,9]},{code:"2025123",date:"2025-10-29",front:[8,13,24,25,31],back:[4,10]},{code:"2025122",date:"2025-10-27",front:[2,3,6,16,17],back:[4,5]},{code:"2025121",date:"2025-10-25",front:[2,3,8,13,21],back:[7,12]},{code:"2025120",date:"2025-10-22",front:[11,13,22,26,35],back:[2,8]},{code:"2025119",date:"2025-10-20",front:[8,15,27,29,31],back:[1,7]},{code:"2025118",date:"2025-10-18",front:[2,8,9,12,21],back:[4,5]}];
+
+// ==================== MATH ENGINE ====================
+function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r}
+function comb(n,k){if(k>n)return 0;return factorial(n)/(factorial(k)*factorial(n-k))}
+
+function countFreq(data,key,max){
+  const f=new Array(max+1).fill(0);
+  data.forEach(d=>(Array.isArray(d[key])?d[key]:[d[key]]).forEach(n=>f[n]++));
+  return f.slice(1);
+}
+
+function computeMissing(data,key,max){
+  const N=data.length;const miss=new Array(max+1).fill(N);
+  for(let i=0;i<N;i++)(Array.isArray(data[i][key])?data[i][key]:[data[i][key]]).forEach(n=>{if(miss[n]===N)miss[n]=i});
+  return miss.slice(1);
+}
+
+function mean(arr){return arr.reduce((a,b)=>a+b,0)/arr.length}
+function std(arr,mu){mu=mu??mean(arr);return Math.sqrt(arr.reduce((s,x)=>s+(x-mu)**2,0)/arr.length)}
+function clamp(v,min=0,max=1){return Math.max(min,Math.min(max,v))}
+function norm(v,min,max){return max===min?0.5:clamp((v-min)/(max-min))}
+function normalizeArray(arr){const mn=Math.min(...arr),mx=Math.max(...arr);return arr.map(v=>norm(v,mn,mx))}
+function median(arr){const a=[...arr].sort((x,y)=>x-y),m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function mad(arr,med){med=med??median(arr);return median(arr.map(x=>Math.abs(x-med)))||1}
+function poissonPmf(lambda,k){let p=Math.exp(-lambda);for(let i=1;i<=k;i++)p*=lambda/i;return p}
+function binomLogLikelihood(trials,successes,p){p=clamp(p,1e-6,1-1e-6);return successes*Math.log(p)+(trials-successes)*Math.log(1-p)}
+function sigmoid(x){return 1/(1+Math.exp(-x))}
+
+function sequenceFor(data,key,num){return data.slice().reverse().map(d=>d[key].includes(num)?1:0)}
+function computeTransitionScore(data,key,totalNums){
+  const chronological=data.slice().reverse();
+  const scores=new Array(totalNums).fill(0);
+  for(let n=1;n<=totalNums;n++){
+    let afterSeen=0,totalSeen=0,afterMiss=0,totalMiss=0;
+    for(let i=1;i<chronological.length;i++){
+      const prev=chronological[i-1][key].includes(n);
+      const curr=chronological[i][key].includes(n);
+      if(prev){totalSeen++;if(curr)afterSeen++}
+      else{totalMiss++;if(curr)afterMiss++}
+    }
+    const pSeen=(afterSeen+1)/(totalSeen+2);
+    const pMiss=(afterMiss+1)/(totalMiss+2);
+    const latestSeen=chronological[chronological.length-1][key].includes(n);
+    scores[n-1]=latestSeen?pSeen:pMiss;
+  }
+  return scores;
+}
+
+function computeEmaScore(data,key,totalNums,alpha=0.18){
+  const chronological=data.slice().reverse();
+  const ema=new Array(totalNums).fill(0);
+  chronological.forEach(d=>{
+    for(let i=0;i<totalNums;i++)ema[i]=alpha*(d[key].includes(i+1)?1:0)+(1-alpha)*ema[i];
+  });
+  return ema;
+}
+
+function computeGapStats(data,key,totalNums){
+  const chronological=data.slice().reverse();
+  const gaps=Array.from({length:totalNums},()=>[]);
+  const last=new Array(totalNums).fill(null);
+  chronological.forEach((d,idx)=>{
+    d[key].forEach(n=>{
+      const i=n-1;
+      if(last[i]!==null)gaps[i].push(idx-last[i]);
+      last[i]=idx;
+    });
+  });
+  return gaps.map((g,i)=>{
+    const avg=g.length?mean(g):chronological.length;
+    const vol=g.length>1?std(g,avg):avg;
+    const recentMiss=chronological.length-1-(last[i]??-1);
+    const cycle=1-Math.min(Math.abs(recentMiss-avg)/(avg+1),1);
+    const regularity=1-Math.min(vol/(avg+1),1);
+    return {avg,vol,recentMiss,cycle,regularity};
+  });
+}
+
+function computeAutocorrelation(data,key,totalNums,lag=1){
+  return Array.from({length:totalNums},(_,i)=>{
+    const seq=sequenceFor(data,key,i+1);
+    const mu=mean(seq);
+    let num=0,den=0;
+    for(let t=lag;t<seq.length;t++)num+=(seq[t]-mu)*(seq[t-lag]-mu);
+    for(let t=0;t<seq.length;t++)den+=(seq[t]-mu)**2;
+    return den?num/den:0;
+  });
+}
+
+function computeKernelSmooth(freq,totalNums){
+  return freq.map((_,i)=>{
+    let wsum=0,vsum=0;
+    for(let j=0;j<totalNums;j++){
+      const d=Math.abs(i-j);
+      const w=Math.exp(-(d*d)/(2*1.8*1.8));
+      wsum+=w;vsum+=w*freq[j];
+    }
+    return vsum/wsum;
+  });
+}
+
+function patternBalanceScore(num,totalNums){
+  const mid=(totalNums+1)/2;
+  const center=1-Math.abs(num-mid)/mid;
+  const parity=num%2?0.52:0.48;
+  const zone=1-Math.abs(Math.ceil(num/(totalNums/3))-2)/2;
+  return clamp(center*0.45+parity*0.2+zone*0.35);
+}
+
+// Composite scoring engine: 18+ actual statistical/probability signals.
+function mathScore(data,key,totalNums,pickCount,windows){
+  const N=data.length;
+  const freq=countFreq(data,key,totalNums);
+  const missing=computeMissing(data,key,totalNums);
+  const expFreq=N*pickCount/totalNums;
+  const freqStd=std(freq,expFreq)||1;
+  const p0=pickCount/totalNums;
+  const recent=data.slice(0,windows.recent||20);
+  const recentFreq=countFreq(recent,key,totalNums);
+  const markovScore=computeTransitionScore(data,key,totalNums);
+  const emaScore=computeEmaScore(data,key,totalNums);
+  const gapStats=computeGapStats(data,key,totalNums);
+  const acScore=computeAutocorrelation(data,key,totalNums);
+  const kernelScore=computeKernelSmooth(freq,totalNums);
+  const totalAppear=freq.reduce((a,b)=>a+b,0);
+  const probs=freq.map(f=>Math.max(f,0.5)/totalAppear);
+  const entropy=probs.reduce((s,p)=>s-p*Math.log2(p),0);
+  const entropyScore=probs.map(p=>1-Math.abs(p-1/totalNums)*totalNums*0.5);
+  const alpha=1+pickCount,beta=1+totalNums-pickCount;
+  const bayesScore=freq.map(f=>(alpha+f)/(alpha+beta+N));
+  const robustCenter=median(freq);
+  const robustScale=1.4826*mad(freq,robustCenter);
+  const poissonScore=freq.map(f=>poissonPmf(expFreq,f));
+  const maxPoisson=Math.max(...poissonScore)||1;
+  const binomScore=freq.map(f=>Math.exp(binomLogLikelihood(N,f,p0)/N));
+  const chiScore=freq.map(f=>(f-expFreq)**2/(expFreq||1));
+  const klScore=probs.map(p=>p*Math.log((p+1e-9)/(1/totalNums)));
+  const wilsonScore=freq.map(f=>{
+    const z=1.96,phat=f/N,den=1+z*z/N;
+    return (phat+z*z/(2*N)-z*Math.sqrt((phat*(1-phat)+z*z/(4*N))/N))/den;
+  });
+  const missHazard=missing.map(m=>1-Math.pow(1-p0,m+1));
+  const cycleScore=gapStats.map(g=>g.cycle);
+  const regularityScore=gapStats.map(g=>g.regularity);
+  const balanceScore=Array.from({length:totalNums},(_,i)=>patternBalanceScore(i+1,totalNums));
+  const freqNorm=normalizeArray(freq);
+  const recentNorm=normalizeArray(recentFreq);
+  const bayesNorm=normalizeArray(bayesScore);
+  const wilsonNorm=normalizeArray(wilsonScore);
+  const markovNorm=normalizeArray(markovScore);
+  const emaNorm=normalizeArray(emaScore);
+  const kernelNorm=normalizeArray(kernelScore);
+  const poissonNorm=poissonScore.map(p=>p/maxPoisson);
+  const binomNorm=normalizeArray(binomScore);
+  const chiNorm=chiScore.map(x=>1-clamp(x/6));
+  const klNorm=klScore.map(x=>1-clamp(x*totalNums));
+  const autoNorm=acScore.map(x=>sigmoid(x*4));
+  const scores=[];
+  for(let i=0;i<totalNums;i++){
+    const z=(freq[i]-expFreq)/(freqStd||1);
+    const robustZ=(freq[i]-robustCenter)/(robustScale||1);
+    const evFreq=clamp(0.55*bayesNorm[i]+0.25*wilsonNorm[i]+0.2*freqNorm[i]);
+    const monteCarlo=clamp((Math.random()*0.06-0.03)+0.5*bayesNorm[i]+0.25*emaNorm[i]+0.25*balanceScore[i]);
+    const comp=
+      freqNorm[i]*10+recentNorm[i]*8+(1-clamp(Math.abs(z)/3))*7+(1-clamp(Math.abs(robustZ)/3))*6+
+      evFreq*10+missHazard[i]*7+markovNorm[i]*7+entropyScore[i]*5+bayesNorm[i]*9+wilsonNorm[i]*7+
+      poissonNorm[i]*5+binomNorm[i]*5+chiNorm[i]*4+klNorm[i]*4+emaNorm[i]*6+cycleScore[i]*4+
+      regularityScore[i]*3+autoNorm[i]*2+kernelNorm[i]*3+monteCarlo*3+balanceScore[i]*3;
+    scores.push({
+      num:i+1,freq:freq[i],zScore:z,robustZ,evFreq,miss:missing[i],missHazard:missHazard[i],
+      markov:markovScore[i],entropy:entropyScore[i],bayes:bayesScore[i],wilson:wilsonScore[i],
+      poisson:poissonNorm[i],binom:binomNorm[i],chi:chiNorm[i],kl:klNorm[i],ema:emaNorm[i],
+      cycle:cycleScore[i],regularity:regularityScore[i],auto:autoNorm[i],kernel:kernelNorm[i],
+      balance:balanceScore[i],monteCarlo,composite:Math.round(comp)
+    });
+  }
+  return {scores,expFreq,freqStd,entropy,recentFreq};
+}
+
+function getScoreClass(v,maxV){
+  if(v>=maxV*0.7)return'score-high';
+  if(v>=maxV*0.35)return'score-mid';
+  return'score-low';
+}
+
+function renderMathTable(containerId,scores){
+  const maxC=Math.max(...scores.map(s=>s.composite));
+  const maxZ=Math.max(...scores.map(s=>Math.abs(s.zScore)));
+  document.getElementById(containerId).innerHTML=scores.map(s=>`<tr>
+    <td style="font-weight:700">${String(s.num).padStart(2,'0')}</td>
+    <td>${s.freq}</td>
+    <td><span class="score-cell ${getScoreClass(Math.abs(s.zScore),maxZ)}">${s.zScore.toFixed(2)}</span></td>
+    <td>${(s.evFreq*100).toFixed(1)}%</td>
+    <td>${s.miss}期前</td>
+    <td><span class="score-cell">${(s.markov*100).toFixed(1)}%</span></td>
+    <td>${s.entropy.toFixed(3)}</td>
+    <td>${s.bayes.toFixed(4)}</td>
+    <td><span class="score-cell ${getScoreClass(s.composite,maxC)}"><b>${s.composite}</b></span></td>
+  </tr>`).join('');
+}
+
+function renderFreqGrid(cid,freq,th){let m=Math.max(...freq);document.getElementById(cid).innerHTML=freq.map((c,i)=>{let n=i+1,cls;if(c===0)cls='zero';else if(c>=th[0])cls='hot';else if(c>=th[1])cls='warm';else if(c>=th[2])cls='cool';else cls='cold';return`<div class="freq-cell ${cls}" title="${n}: ${c}次"><span class="num">${String(n).padStart(2,'0')}</span><span class="cnt">${c}次</span></div>`}).join('')}
+
+function renderHistory(cid,data,mk,bc,sk,sc){document.getElementById(cid).innerHTML=data.map(d=>{let mb=d[mk].map(n=>`<span class="ball ${bc}">${String(n).padStart(2,'0')}</span>`).join('');let sb=Array.isArray(d[sk])?d[sk].map(n=>`<span class="ball ${sc}">${String(n).padStart(2,'0')}</span>`).join(''):`<span class="ball ${sc}">${String(d[sk]).padStart(2,'0')}</span>`;return`<tr><td>${d.code}</td><td>${d.date}</td><td><div class="red-group">${mb}</div></td><td>${sb}</td></tr>`}).join('')}
+
+// ==================== WEIGHTED PICK ====================
+function weightedPick(weights){let t=weights.reduce((a,b)=>a+b,0);if(!isFinite(t)||t<=0)return Math.floor(Math.random()*weights.length);let r=Math.random()*t;for(let i=0;i<weights.length;i++){r-=weights[i];if(r<=0)return i}return weights.length-1}
+
+function pickUnique(weights,pickCount){
+  const w=[...weights];const picked=[];
+  for(let i=0;i<pickCount;i++){
+    picked.forEach(p=>w[p]=0);
+    const idx=weightedPick(w);
+    picked.push(idx);w[idx]=0;
+  }
+  return picked.sort((a,b)=>a-b).map(n=>n+1);
+}
+
+function gameTheoryPenalty(picked,totalNums){
+  let penalty=0;
+  for(let i=1;i<picked.length;i++)if(picked[i]-picked[i-1]===1)penalty+=3;
+  const tails={};picked.forEach(n=>{let t=n%10;tails[t]=(tails[t]||0)+1});
+  Object.values(tails).forEach(c=>{if(c>=3)penalty+=(c-2)*4});
+  const oddCount=picked.filter(n=>n%2===1).length;
+  if(oddCount===0||oddCount===picked.length)penalty+=5;
+  const lowCount=picked.filter(n=>n<=totalNums/2).length;
+  if(lowCount===0||lowCount===picked.length)penalty+=4;
+  const span=picked[picked.length-1]-picked[0];
+  if(span<totalNums*0.35)penalty+=4;
+  return penalty;
+}
+
+function generateRecommend(mathResult,totalNums,pickCount,secFreq,secPickCount,containerId,isDLT){
+  const {scores}=mathResult;
+  const maxC=Math.max(...scores.map(s=>s.composite));
+  const wFreq=scores.map(s=>Math.pow(s.freq+1,1.8));
+  const wEv=scores.map(s=>Math.pow(s.composite/maxC,2)*30);
+  const wMiss=scores.map(s=>Math.pow(s.miss+1,0.7)/Math.max(...scores.map(x=>Math.pow(x.miss+1,0.7)))*25);
+  const wMarkov=scores.map(s=>Math.pow(s.markov*100+1,1.6));
+  const wBayes=scores.map(s=>Math.pow(s.bayes*100,1.5));
+  const wEntropy=scores.map(s=>Math.pow(Math.max(s.entropy,0.05),3)*20);
+  const wWilson=scores.map(s=>Math.pow(s.wilson*100+1,1.7));
+  const wStability=scores.map(s=>Math.pow((s.cycle+s.regularity+s.chi+s.kl)/4*20+1,1.4));
+  const wTrend=scores.map(s=>Math.pow((s.ema+s.kernel+s.auto)/3*20+1,1.5));
+  const secAnalysisData=recentData(dataFor(isDLT));
+  const secTotal=secFreq.length,secPick=isDLT?2:1,secN=secAnalysisData.length;
+  const secP=secPick/secTotal;
+  const secMiss=computeMissing(secAnalysisData,isDLT?'back':'blue',secTotal);
+  const secBase=secFreq.map((f,i)=>{
+    const posterior=(1+secPick+f)/(2+secTotal+secN);
+    const hazard=1-Math.pow(1-secP,secMiss[i]+1);
+    return Math.pow((posterior*80+hazard*12+patternBalanceScore(i+1,secTotal)*8)+1,1.25);
+  });
+  const strategies=[
+    {label:'频率加权',cls:'idx-freq',mainW:wFreq,secW:secBase},
+    {label:'贝叶斯后验',cls:'idx-bayes',mainW:wBayes,secW:secBase},
+    {label:'Wilson置信',cls:'idx-ev',mainW:wWilson,secW:secBase},
+    {label:'泊松/二项',cls:'idx-ev',mainW:scores.map(s=>Math.pow((s.poisson+s.binom)*10+1,1.4)),secW:secBase},
+    {label:'遗漏风险',cls:'idx-miss',mainW:wMiss,secW:secBase.map((w,i)=>w*Math.pow(secMiss[i]+1,0.4))},
+    {label:'马尔可夫转移',cls:'idx-markov',mainW:wMarkov,secW:secBase},
+    {label:'熵/KL均衡',cls:'idx-entropy',mainW:wEntropy.map((w,i)=>w*(scores[i].kl+0.3)),secW:secBase},
+    {label:'EMA趋势',cls:'idx-markov',mainW:wTrend,secW:secBase},
+    {label:'周期稳定',cls:'idx-miss',mainW:wStability,secW:secBase},
+    {label:'多目标优化',cls:'idx-game',mainW:wEv,secW:secBase}
+  ];
+  const groups=[];
+  for(let g=0;g<10;g++){
+    const strat=strategies[g];
+    let mainPicked=pickUnique(strat.mainW,pickCount);
+    const secPicked=pickUnique(strat.secW,secPickCount);
+    if(strat.label==='多目标优化'){
+      let bestPicked=mainPicked;let bestPenalty=Infinity;
+      for(let attempt=0;attempt<80;attempt++){
+        const candidate=pickUnique(strat.mainW,pickCount);
+        const p=gameTheoryPenalty(candidate,totalNums);
+        if(p<bestPenalty){bestPenalty=p;bestPicked=candidate}
+      }
+      mainPicked=bestPicked;
+    }
+    groups.push({group:[...mainPicked,...secPicked],strategy:strat.label,cls:strat.cls});
+  }
+  renderRecommendCardsProper(containerId,groups,isDLT);
+}
+function dataFor(isDLT){return isDLT?DLT_DATA:SSQ_DATA}
+function recentData(data,limit=100){return data.slice(0,limit)}
+
+function renderRecommendCardsProper(cid,groups,isDLT){
+  const mainCnt=isDLT?5:6;
+  document.getElementById(cid).innerHTML=groups.map((g,i)=>{
+    const main=g.group.slice(0,mainCnt).map(n=>`<span class="ball ball-red">${String(n).padStart(2,'0')}</span>`).join('');
+    const sec=g.group.slice(mainCnt).map(n=>`<span class="ball ball-blue">${String(n).padStart(2,'0')}</span>`).join('');
+    return`<div class="recommend-card"><div class="idx ${g.cls}">#${i+1}<span class="strat">${g.strategy}</span></div><div class="nums">${main}<span class="sep">|</span>${sec}</div></div>`;
+  }).join('');
+}
+
+// ==================== UI COPY REFRESH ====================
+function formulaCardsHtml(game){
+  const combo=game==='ssq'?'C(33,6) * C(16,1) = 17,721,088':'C(35,5) * C(12,2) = 21,425,712';
+  const p=game==='ssq'?'p=6/33':'p=5/35';
+  const cards=[
+    ['01 概率频率','P(n)=f(n)/N','统计历史样本中的实际出现比例。'],
+    ['02 Z-Score','Z=(f-mu)/sigma','衡量号码频率相对理论期望的标准化偏离。'],
+    ['03 鲁棒Z分数','RZ=(f-median)/(1.4826*MAD)','降低极端频次对评分的影响。'],
+    ['04 贝叶斯后验','Beta(alpha+f,beta+N-f)','用理论概率作为先验，对小样本更稳。'],
+    ['05 Wilson置信下界','Wilson lower bound 95%','优先选择下界也较稳的号码。'],
+    ['06 泊松分布','P(X=k)=lambda^k e^-lambda/k!','检验实际频次与理论期望的贴合度。'],
+    ['07 二项似然','L=p^f(1-p)^(N-f)','按独立试验模型评估观察频率。'],
+    ['08 卡方偏离','chi2=(f-E)^2/E','抑制过度偏离理论分布的异常值。'],
+    ['09 KL散度','D_KL(P||U)=sum p log(p/u)','度量历史分布相对均匀分布的偏离。'],
+    ['10 信息熵','H=-sum p log2 p','衡量分布均衡度。'],
+    ['11 指数衰减','w_t=exp(-lambda*t)','让近期数据权重略高于远期数据。'],
+    ['12 EMA趋势','EMA_t=alpha*x_t+(1-alpha)*EMA_{t-1}','平滑短期趋势。'],
+    ['13 马尔可夫转移','P(X_t|X_{t-1})','用相邻期状态转移估计下一期倾向。'],
+    ['14 遗漏风险','1-(1-p)^(m+1)',`基于 ${p} 估计连续未出的风险。`],
+    ['15 周期间隔','1-|miss-avgGap|/(avgGap+1)','观察当前遗漏与历史平均间隔的接近度。'],
+    ['16 自相关','rho_k=cov(x_t,x_{t-k})/var(x)','检验号码序列是否有轻微延续/反转。'],
+    ['17 核平滑','K(d)=exp(-d^2/2h^2)','平滑相邻号码段的频率结构。'],
+    ['18 多目标优化',combo,'综合分数、奇偶、跨度、同尾、连号等约束。']
+  ];
+  return cards.map(c=>`<div class="math-card"><div class="math-name">${c[0]}</div><div class="math-formula">${c[1]}</div><div class="math-desc">${c[2]}</div></div>`).join('');
+}
+
+function refreshUiCopy(){
+  const h=document.querySelector('.header h1');
+  const p=document.querySelector('.header p');
+  const badge=document.querySelector('.math-badge');
+  if(h)h.textContent='双色球 & 大乐透 · 18+高等数学复合分析系统';
+  if(p)p.textContent='概率论 · 统计推断 · 贝叶斯 · Wilson置信区间 · 泊松/二项分布 · KL散度 · 马尔可夫链 · EMA · 多目标优化';
+  if(badge)badge.textContent='18+数学模型复合评分';
+  const tabs=document.querySelectorAll('.tab');
+  if(tabs[0])tabs[0].textContent='双色球';
+  if(tabs[1])tabs[1].textContent='大乐透';
+  const titles=[
+    '红球 1-33 出现频率（近100期）','蓝球 1-16 出现频率','红球复合评分矩阵（18+模型加权）','开奖记录','18+数学复合引擎 · 生成10组推荐',
+    '前区 1-35 出现频率（近100期）','后区 1-12 出现频率','前区复合评分矩阵（18+模型加权）','开奖记录','18+数学复合引擎 · 生成10组推荐'
+  ];
+  document.querySelectorAll('.section-title').forEach((el,i)=>{if(titles[i])el.textContent=titles[i]});
+  const labels=['最热号码','最冷号码','理论期望次数','频率标准差','最热号码','最冷号码','理论期望次数','频率标准差'];
+  document.querySelectorAll('.stat-card .label').forEach((el,i)=>{if(labels[i])el.textContent=labels[i]});
+  const legends=[
+    ['高频 >=20','中频 16-19','低频 13-15','极低 <=12','未出现'],
+    ['高频 >=18','中频 14-17','低频 11-13','极低 <=10','未出现']
+  ];
+  document.querySelectorAll('.legend').forEach((box,i)=>box.querySelectorAll('.legend-item').forEach((el,j)=>{if(legends[i]?.[j])el.lastChild.textContent=' '+legends[i][j]}));
+  const disclaimer=document.querySelector('.disclaimer');
+  const source=document.querySelector('.data-source');
+  if(disclaimer)disclaimer.textContent='免责声明：本工具基于历史数据做统计分析，推荐号码仅供参考，不构成任何购彩建议。彩票开奖结果是独立随机事件，历史数据不代表未来结果。';
+  if(source)source.textContent='数据来源：中国福利彩票官网(cwl.gov.cn) & 彩吧助手 · 统计截止 2026-07-28 · 算法引擎 v3.0';
+  const details=document.querySelectorAll('.formula-info');
+  details.forEach((d,i)=>{
+    const s=d.querySelector('summary');
+    const g=d.querySelector('.math-grid');
+    if(s)s.textContent='18+数学模型公式说明（点击展开）';
+    if(g)g.innerHTML=formulaCardsHtml(i===0?'ssq':'dlt');
+  });
+  document.querySelectorAll('.btn-generate').forEach(btn=>btn.textContent='运行 18+ 数学模型 · 生成 10 组推荐');
+  document.querySelectorAll('.strategy-tags').forEach(box=>box.innerHTML=[
+    '<span class="strategy-tag tag-freq">频率加权</span>',
+    '<span class="strategy-tag tag-bayes">贝叶斯后验</span>',
+    '<span class="strategy-tag tag-ev">Wilson置信</span>',
+    '<span class="strategy-tag tag-ev">泊松/二项</span>',
+    '<span class="strategy-tag tag-miss">遗漏风险</span>',
+    '<span class="strategy-tag tag-markov">马尔可夫转移</span>',
+    '<span class="strategy-tag tag-entropy">熵/KL均衡</span>',
+    '<span class="strategy-tag tag-markov">EMA趋势</span>',
+    '<span class="strategy-tag tag-miss">周期稳定</span>',
+    '<span class="strategy-tag tag-game">多目标优化</span>'
+  ].join(''));
+}
+
+// ==================== INIT ====================
+function getClass(val,th){if(val===0)return'zero';if(val>=th[0])return'hot';if(val>=th[1])return'warm';if(val>=th[2])return'cool';return'cold'}
+
+function initSSQ(){
+  const analysisData=recentData(SSQ_DATA);
+  const rF=countFreq(analysisData,'red',33);
+  const bF=countFreq(analysisData,'blue',16);
+  renderFreqGrid('ssq-red-grid',rF,[20,16,13]);
+  renderFreqGrid('ssq-blue-grid',bF,[9,7,5]);
+
+  const rMax=Math.max(...rF);const rMin=Math.min(...rF.filter(c=>c>0));
+  const rH=rF.map((c,i)=>({n:i+1,c})).filter(x=>x.c===rMax).map(x=>x.n).join(',');
+  const rC=rF.map((c,i)=>({n:i+1,c})).filter(x=>x.c===rMin).map(x=>x.n).join(',');
+  const exp=100*6/33;const rst=std(rF,exp);
+  document.getElementById('ssq-hot-num').textContent=rH+'('+rMax+'次)';
+  document.getElementById('ssq-cold-num').textContent=rC+'('+rMin+'次)';
+  document.getElementById('ssq-theory').textContent=exp.toFixed(1);
+  document.getElementById('ssq-std').textContent=rst.toFixed(2);
+
+  const math=mathScore(analysisData,'red',33,6,{recent:20});
+  renderMathTable('ssq-math-scores',math.scores);
+
+  renderHistory('ssq-history',analysisData,'red','ball-red','blue','ball-blue');
+
+  // Store for later
+  window._ssqMath=math;
+  window._ssqBlueF=bF;
+}
+
+function initDLT(){
+  const analysisData=recentData(DLT_DATA);
+  const fF=countFreq(analysisData,'front',35);
+  const bF=countFreq(analysisData,'back',12);
+  renderFreqGrid('dlt-front-grid',fF,[18,14,11]);
+  renderFreqGrid('dlt-back-grid',bF,[10,8,6]);
+
+  const fMax=Math.max(...fF);const fMin=Math.min(...fF.filter(c=>c>0));
+  const fH=fF.map((c,i)=>({n:i+1,c})).filter(x=>x.c===fMax).map(x=>x.n).join(',');
+  const fC=fF.map((c,i)=>({n:i+1,c})).filter(x=>x.c===fMin).map(x=>x.n).join(',');
+  const exp=100*5/35;const fst=std(fF,exp);
+  document.getElementById('dlt-hot-num').textContent=fH+'('+fMax+'次)';
+  document.getElementById('dlt-cold-num').textContent=fC+'('+fMin+'次)';
+  document.getElementById('dlt-theory').textContent=exp.toFixed(1);
+  document.getElementById('dlt-std').textContent=fst.toFixed(2);
+
+  const math=mathScore(analysisData,'front',35,5,{recent:20});
+  renderMathTable('dlt-math-scores',math.scores);
+
+  renderHistory('dlt-history',analysisData,'front','ball-red','back','ball-blue');
+
+  window._dltMath=math;
+  window._dltBackF=bF;
+}
+
+// ==================== GENERATE ====================
+function generateSSQ(){
+  const math=window._ssqMath;
+  const bF=window._ssqBlueF;
+  generateRecommend(math,33,6,bF,1,'ssq-recommend',false);
+}
+
+function generateDLT(){
+  const math=window._dltMath;
+  const bF=window._dltBackF;
+  generateRecommend(math,35,5,bF,2,'dlt-recommend',true);
+}
+
+function switchTab(type){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active','dlt'));
+  document.querySelectorAll('[id^="panel-"]').forEach(p=>p.classList.add('hidden'));
+  if(type==='ssq'){document.querySelectorAll('.tab')[0].classList.add('active');document.getElementById('panel-ssq').classList.remove('hidden')}
+  else{document.querySelectorAll('.tab')[1].classList.add('active','dlt');document.getElementById('panel-dlt').classList.remove('hidden')}
+}
+
+refreshUiCopy();initSSQ();initDLT();
+</script>
+</body>
+</html>
