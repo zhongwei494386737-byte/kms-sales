@@ -909,11 +909,11 @@
 
 <!-- Navigation -->
 <div class="nav-tabs no-print">
-    <div class="nav-tab active" onclick="switchTab('products')">📦 商品管理</div>
-    <div class="nav-tab" onclick="switchTab('customers')">👥 客户管理</div>
-    <div class="nav-tab" onclick="switchTab('order')">📋 开具销售单</div>
-    <div class="nav-tab" onclick="switchTab('history')">📊 订单记录</div>
-    <div class="nav-tab" onclick="switchTab('data')">💾 数据管理</div>
+    <div class="nav-tab active" data-tab="products" role="button" tabindex="0" onclick="switchTab('products', this)">📦 商品管理</div>
+    <div class="nav-tab" data-tab="customers" role="button" tabindex="0" onclick="switchTab('customers', this)">👥 客户管理</div>
+    <div class="nav-tab" data-tab="order" role="button" tabindex="0" onclick="switchTab('order', this)">📋 开具销售单</div>
+    <div class="nav-tab" data-tab="history" role="button" tabindex="0" onclick="switchTab('history', this)">📊 订单记录</div>
+    <div class="nav-tab" data-tab="data" role="button" tabindex="0" onclick="switchTab('data', this)">💾 数据管理</div>
 </div>
 
 <div class="container">
@@ -1236,6 +1236,13 @@
                 </div>
             </div>
 
+            <div style="margin-top:25px;border:2px solid #6f42c1;border-radius:10px;padding:20px;background:#fbf8ff;">
+                <h3 style="color:#6f42c1;margin-bottom:10px;">🧮 资金一致性检查</h3>
+                <p style="font-size:13px;color:#666;margin-bottom:12px;">按订单与收款记录重新计算每位客户的应收余额，并检查孤立记录、重复编号和旧版重复累计风险。</p>
+                <button class="btn btn-primary" onclick="runFinancialAudit()">立即检查当前数据</button>
+                <div id="dataAuditResult" style="display:none;margin-top:15px;padding:14px;border-radius:8px;line-height:1.7;"></div>
+            </div>
+
             <!-- Danger Zone -->
             <div style="margin-top:25px;border:2px solid #dc3545;border-radius:10px;padding:20px;background:#fff5f5;">
                 <h3 style="color:#dc3545;margin-bottom:10px;">⚠️ 危险操作</h3>
@@ -1290,7 +1297,7 @@
 </div>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
 <script>
 // =============================================
 // Data Store (localStorage persistence)
@@ -1300,24 +1307,101 @@ const DB_KEYS = {
     customers: 'kms_customers',
     orders: 'kms_orders',
     payments: 'kms_payments',
-    orderCounter: 'kms_order_counter'
+    orderCounter: 'kms_order_counter',
+    businessDecisions: 'kms_business_decisions'
 };
 
-function loadData(key) {
-    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+const APP_DATA_VERSION = '2.0';
+const corruptedDataKeys = new Map();
+let isSavingOrder = false;
+let isSavingReceipt = false;
+let lastSavedOrderId = null;
+
+function roundMoney(value) {
+    return Math.round((Number(value) || 0) * 100) / 100;
 }
-function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
-function getCounter() { return parseInt(localStorage.getItem(DB_KEYS.orderCounter) || '0'); }
+
+function createRecordId(prefix) {
+    return prefix + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function loadData(key) {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return [];
+    try {
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data)) throw new Error('数据不是数组');
+        corruptedDataKeys.delete(key);
+        return data;
+    } catch(e) {
+        corruptedDataKeys.set(key, e.message);
+        console.error(`本地数据 ${key} 已损坏，已阻止覆盖。`, e);
+        return [];
+    }
+}
+
+function loadBusinessDecisions() {
+    const raw = localStorage.getItem(DB_KEYS.businessDecisions);
+    if (raw === null) return {};
+    try {
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('业务确认数据不是对象');
+        corruptedDataKeys.delete(DB_KEYS.businessDecisions);
+        return data;
+    } catch (error) {
+        corruptedDataKeys.set(DB_KEYS.businessDecisions, error.message);
+        console.error('业务确认数据已损坏，已阻止覆盖。', error);
+        return {};
+    }
+}
+
+function saveData(key, data) {
+    if (corruptedDataKeys.has(key)) {
+        alert(`❌ 检测到本地数据「${key}」损坏。为防止覆盖原数据，当前保存已停止。\n请先导出浏览器存储或联系技术人员恢复。`);
+        throw new Error(`Refusing to overwrite corrupted storage key: ${key}`);
+    }
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+        alert('❌ 数据保存失败，可能是浏览器存储空间不足。请立即导出备份后再操作。');
+        throw e;
+    }
+}
+
+function commitDataTransaction(updates, options = {}) {
+    const originals = new Map();
+    try {
+        Object.entries(updates).forEach(([key, value]) => {
+            if (corruptedDataKeys.has(key) && !options.allowCorrupt) throw new Error(`本地数据 ${key} 已损坏`);
+            originals.set(key, localStorage.getItem(key));
+            localStorage.setItem(key, JSON.stringify(value));
+        });
+        if (options.allowCorrupt) Object.keys(updates).forEach(key => corruptedDataKeys.delete(key));
+        return true;
+    } catch (e) {
+        originals.forEach((value, key) => {
+            if (value === null) localStorage.removeItem(key);
+            else localStorage.setItem(key, value);
+        });
+        console.error('事务保存失败，已回滚。', e);
+        alert('❌ 账务保存失败，所有本次变更已回滚。请导出备份并检查浏览器存储空间。');
+        return false;
+    }
+}
+function getCounter() { return parseInt(localStorage.getItem(DB_KEYS.orderCounter) || '0', 10) || 0; }
 function incCounter() { const n = getCounter() + 1; localStorage.setItem(DB_KEYS.orderCounter, n); return n; }
 
 // =============================================
 // Tab Switching
 // =============================================
-function switchTab(tabId) {
+function switchTab(tabId, tabElement = null) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + tabId).classList.add('active');
-    event.currentTarget.classList.add('active');
+    const panel = document.getElementById('tab-' + tabId);
+    if (!panel) return;
+    panel.classList.add('active');
+    const activeTab = tabElement || document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+    if (activeTab) activeTab.classList.add('active');
 
     if (tabId === 'products') renderProductTable();
     if (tabId === 'customers') renderCustomerGrid();
@@ -1334,9 +1418,16 @@ function switchTab(tabId) {
 // =============================================
 let allProducts = [];
 
+function ensureXlsxAvailable() {
+    if (typeof XLSX !== 'undefined') return true;
+    alert('❌ Excel 组件未加载，无法导入或导出表格。请确认 vendor/xlsx.full.min.js 文件与网页放在同一目录结构中。');
+    return false;
+}
+
 function handleFileImport(event) {
     const file = event.target.files[0];
     if (!file) return;
+    if (!ensureXlsxAvailable()) { event.target.value = ''; return; }
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -1347,6 +1438,7 @@ function handleFileImport(event) {
             const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
             const imported = [];
+            let invalidCount = 0;
             jsonData.forEach(row => {
                 // Try to find columns by common names
                 const keys = Object.keys(row);
@@ -1354,12 +1446,14 @@ function handleFileImport(event) {
                 let price = parseFloat(row['价格'] || row['单价'] || row['进价'] || row['Price'] || row[Object.keys(row)[1]]) || 0;
                 let supplier = String(row['供货商'] || row['供应商'] || row['厂家'] || row['Supplier'] || row[Object.keys(row)[2]] || '');
 
-                if (sku && String(sku).trim()) {
+                if (sku && String(sku).trim() && Number.isFinite(price) && price > 0) {
                     imported.push({
                         sku: String(sku).trim(),
-                        price: parseFloat(price),
+                        price: roundMoney(price),
                         supplier: supplier.trim()
                     });
+                } else if (sku && String(sku).trim()) {
+                    invalidCount++;
                 }
             });
 
@@ -1381,7 +1475,7 @@ function handleFileImport(event) {
             });
             saveData(DB_KEYS.products, existing);
 
-            alert(`✅ 导入成功！新增 ${addedCount} 件商品，共 ${existing.length} 件。`);
+            alert(`✅ 导入成功！新增 ${addedCount} 件商品，共 ${existing.length} 件。${invalidCount ? `\n已跳过 ${invalidCount} 行无效价格数据。` : ''}`);
             renderProductTable();
         } catch(err) {
             alert('❌ 文件解析失败：' + err.message);
@@ -1396,8 +1490,8 @@ function renderProductTable() {
     const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
 
     const filtered = allProducts.filter(p =>
-        p.sku.toLowerCase().includes(search) ||
-        p.supplier.toLowerCase().includes(search)
+        String(p.sku || '').toLowerCase().includes(search) ||
+        String(p.supplier || '').toLowerCase().includes(search)
     );
 
     document.getElementById('totalProducts').textContent = allProducts.length;
@@ -1409,11 +1503,11 @@ function renderProductTable() {
         <tr id="prod-row-${i}">
             <td>${i + 1}</td>
             <td class="prod-sku-cell" id="prod-sku-${i}"><strong>${escapeHtml(p.sku)}</strong></td>
-            <td class="prod-price-cell" id="prod-price-${i}">¥${p.price.toFixed(2)}</td>
+            <td class="prod-price-cell" id="prod-price-${i}">¥${roundMoney(p.price).toFixed(2)}</td>
             <td class="prod-supplier-cell" id="prod-supplier-${i}">${escapeHtml(p.supplier)}</td>
             <td>
                 <button class="btn btn-sm btn-info" onclick="editProductRow(${i})">编辑</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteProduct('${escapeHtml(p.sku)}')">删除</button>
+                <button class="btn btn-sm btn-danger" data-action="delete-product" data-sku="${escapeAttr(p.sku)}">删除</button>
             </td>
         </tr>
     `).join('');
@@ -1439,7 +1533,7 @@ function editProductRow(idx) {
 
     // Replace display with input fields
     skuCell.innerHTML = `<input type="text" class="form-control" id="edit-sku-${idx}" value="${escapeHtml(p.sku)}" style="padding:4px 8px;width:120px;">`;
-    priceCell.innerHTML = `<input type="number" class="form-control" id="edit-price-${idx}" value="${p.price}" step="0.01" style="padding:4px 8px;width:100px;">`;
+    priceCell.innerHTML = `<input type="number" class="form-control" id="edit-price-${idx}" value="${roundMoney(p.price)}" step="0.01" style="padding:4px 8px;width:100px;">`;
     supplierCell.innerHTML = `<input type="text" class="form-control" id="edit-supplier-${idx}" value="${escapeHtml(p.supplier)}" style="padding:4px 8px;width:120px;">`;
 
     // Change buttons to save/cancel
@@ -1478,7 +1572,7 @@ function saveProductEdit(idx) {
     }
 
     products[targetIdx].sku = newSku;
-    products[targetIdx].price = newPrice;
+    products[targetIdx].price = roundMoney(newPrice);
     products[targetIdx].supplier = newSupplier;
     saveData(DB_KEYS.products, products);
 
@@ -1498,13 +1592,13 @@ function addManualProduct() {
     const existing = products.find(p => p.sku === sku);
 
     if (existing) {
-        if (!confirm(`款号「${sku}」已存在（¥${existing.price.toFixed(2)}），是否覆盖价格？`)) return;
-        existing.price = price;
+        if (!confirm(`款号「${sku}」已存在（¥${roundMoney(existing.price).toFixed(2)}），是否覆盖价格？`)) return;
+        existing.price = roundMoney(price);
         existing.supplier = supplier || existing.supplier;
         saveData(DB_KEYS.products, products);
         alert('✅ 商品已更新！');
     } else {
-        products.push({ sku, price, supplier });
+        products.push({ sku, price: roundMoney(price), supplier });
         saveData(DB_KEYS.products, products);
         alert('✅ 商品添加成功！');
     }
@@ -1565,13 +1659,11 @@ function saveCustomer() {
         const idx = customers.findIndex(c => c.id === editId);
         if (idx !== -1) {
             customerData.id = editId;
-            customerData.balance = customers[idx].balance;
-            customerData.totalSpent = customers[idx].totalSpent;
-            customerData.totalPaid = customers[idx].totalPaid;
-            // Preserve remark if empty in edit mode
-            if (!customerData.remark) {
-                customerData.remark = customers[idx].remark || '';
-            }
+            customerData.balance = roundMoney(customers[idx].balance);
+            customerData.totalSpent = roundMoney(customers[idx].totalSpent);
+            customerData.totalPaid = roundMoney(customers[idx].totalPaid);
+            customerData.mergedCustomerIds = customers[idx].mergedCustomerIds || [];
+            customerData.auditRestored = !!customers[idx].auditRestored;
             customers[idx] = customerData;
         }
     } else {
@@ -1596,20 +1688,20 @@ function renderCustomerGrid() {
     }
 
     grid.innerHTML = customers.map(c => `
-        <div class="customer-card" onclick="showCustomerModal('${c.id}')">
+        <div class="customer-card" data-customer-id="${escapeAttr(c.id)}">
             <div class="customer-name">${escapeHtml(c.name)}</div>
             <div class="customer-phone">📱 ${escapeHtml(c.phone || '-')} 📍 ${escapeHtml(c.address || '-')}</div>
             <div class="customer-balance">
-                💰 结欠余额：<strong style="${c.balance>0?'color:#c41e3a;':c.balance<0?'color:#28a745;':''}">¥${c.balance.toFixed(2)}</strong> ${c.balance > 0 ? '(客户欠我)' : c.balance < 0 ? '(我欠客户)' : '(已结清)'}
+                💰 结欠余额：<strong style="${roundMoney(c.balance)>0?'color:#c41e3a;':roundMoney(c.balance)<0?'color:#28a745;':''}">${formatBalanceDisplay(c.balance)}</strong>
                 <br>
-                累计消费：¥${(c.totalSpent||0).toFixed(2)} | 累计来款：¥${(c.totalPaid||0).toFixed(2)}
+                累计消费：¥${roundMoney(c.totalSpent).toFixed(2)} | 累计来款：¥${roundMoney(c.totalPaid).toFixed(2)}
                 ${c.totalPaid > 0 ? `<br><span style="font-size:12px;color:${c.balance<=0?'#28a745':'#e0a800'};">最近收款：查看详情</span>` : ''}
                 ${c.remark ? `<div style="margin-top:6px;padding:5px 8px;background:#fff8e1;border-left:3px solid #ffc107;font-size:12px;color:#666;line-height:1.5;">📝 ${escapeHtml(c.remark)}</div>` : ''}
             </div>
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();quickNewOrder('${c.id}')">快速开单</button>
-                <button class="btn btn-sm btn-success" onclick="event.stopPropagation();showCustomerLedger('${c.id}','${escapeHtml(c.name)}')">📊 流水</button>
-                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCustomer('${c.id}')">删除</button>
+                <button class="btn btn-sm btn-primary" data-action="quick-order">快速开单</button>
+                <button class="btn btn-sm btn-success" data-action="ledger">📊 流水</button>
+                <button class="btn btn-sm btn-danger" data-action="delete-customer">删除</button>
             </div>
         </div>
     `).join('');
@@ -1618,12 +1710,19 @@ function renderCustomerGrid() {
     const filterSel = document.getElementById('filterCustomer');
     const curVal = filterSel.value;
     filterSel.innerHTML = '<option value="">所有客户</option>' +
-        customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        customers.map(c => `<option value="${escapeAttr(c.id)}">${escapeHtml(c.name)}</option>`).join('');
     filterSel.value = curVal;
 }
 
 function deleteCustomer(id) {
-    if (!confirm('确定删除此客户吗？关联的订单和收款记录将保留。')) return;
+    const orders = loadData(DB_KEYS.orders).filter(o => o.customerId === id);
+    const payments = loadData(DB_KEYS.payments).filter(p => p.customerId === id);
+    const customer = loadData(DB_KEYS.customers).find(c => c.id === id);
+    if (orders.length || payments.length || Math.abs(roundMoney(customer?.balance)) > 0) {
+        alert(`❌ 该客户存在 ${orders.length} 张订单、${payments.length} 条收款记录或未结余额，不能删除。\n这是为了防止历史应收款从客户列表中消失。`);
+        return;
+    }
+    if (!confirm('确定删除这个没有交易记录的客户吗？')) return;
     let customers = loadData(DB_KEYS.customers);
     customers = customers.filter(c => c.id !== id);
     saveData(DB_KEYS.customers, customers);
@@ -1634,22 +1733,26 @@ function deleteCustomer(id) {
 // =============================================
 // Customer Ledger (客户交易流水)
 // =============================================
-function showCustomerLedger(customerId, customerName) {
+function showCustomerLedger(customerId) {
+    const customerName = loadData(DB_KEYS.customers).find(c => c.id === customerId)?.name || '未知客户';
     const orders = loadData(DB_KEYS.orders).filter(o => o.customerId === customerId);
     const payments = loadData(DB_KEYS.payments).filter(p => p.customerId === customerId);
+    const linkedOrderIds = new Set(payments.map(p => findLinkedOrderId(p, orders)).filter(Boolean));
 
     // Build unified timeline
     let items = [];
 
     orders.forEach(o => {
+        const hasLinkedPayment = linkedOrderIds.has(o.id);
         items.push({
             type: 'order',
             date: o.date,
             no: o.orderNo,
             desc: `销售单 · ${o.totalQty || 0}件商品`,
-            amount: +o.totalAmount,      // 销售额（正）
-            payment: +(o.payment||0),     // 随单收款（正）
-            balance: o.finalBalance       // 结欠后余额
+            amount: roundMoney(o.totalAmount),
+            payment: hasLinkedPayment ? 0 : roundMoney(o.payment),
+            balance: hasLinkedPayment ? roundMoney(o.prevBalance + o.totalAmount) : roundMoney(o.finalBalance),
+            sortTime: recordTimestamp(o)
         });
     });
 
@@ -1659,17 +1762,19 @@ function showCustomerLedger(customerId, customerName) {
             date: p.date + (p.time ? ' ' + p.time : ''),
             no: p.receiptNo,
             desc: `收款 · ${p.paymentMethod}`,
-            amount: +(p.orderAmount||0),   // 关联销售金额
-            payment: +p.paymentAmount,      // 收款金额
-            balance: p.newBalance          // 收款后余额
+            amount: 0,
+            payment: roundMoney(p.paymentAmount),
+            balance: roundMoney(p.newBalance),
+            sortTime: recordTimestamp(p)
         });
     });
 
     // Sort by date ascending (oldest first for ledger)
-    items.sort((a, b) => a.date.localeCompare(b.date));
+    items.sort((a, b) => a.sortTime - b.sortTime);
 
     let totalSales = 0, totalPaid = 0;
     items.forEach(it => { totalSales += it.amount; totalPaid += it.payment; });
+    const currentBalance = roundMoney(loadData(DB_KEYS.customers).find(c => c.id === customerId)?.balance);
 
     const html = `
         <div style="max-height:70vh;overflow-y:auto;padding:10px;">
@@ -1680,7 +1785,7 @@ function showCustomerLedger(customerId, customerName) {
             <div style="display:flex;gap:20px;margin-bottom:15px;background:#f8f9fa;padding:12px;border-radius:8px;">
                 <span>📦 累计销售：<strong class="amount-red">¥${totalSales.toFixed(2)}</strong></span>
                 <span>💰 累计收款：<strong style="color:#28a745;">¥${totalPaid.toFixed(2)}</strong></span>
-                <span>💵 当前结欠：<strong style="${totalSales-totalPaid>0?'color:#c41e3a;':'color:#28a745;'}">¥${(totalSales-totalPaid).toFixed(2)}</strong></span>
+                <span>💵 当前结欠：<strong style="${currentBalance>0?'color:#c41e3a;':'color:#28a745;'}">${formatBalanceDisplay(currentBalance)}</strong></span>
             </div>
 
             ${items.length === 0 ?
@@ -1697,17 +1802,17 @@ function showCustomerLedger(customerId, customerName) {
                     </tr></thead>
                     <tbody>${items.map((it,i) => `
                         <tr style="${it.type==='payment'?'background:#f0fdf4;':''}">
-                            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.date}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${escapeHtml(it.date)}</td>
                             <td style="padding:6px 8px;border-bottom:1px solid #eee;">
                                 ${it.type==='order'
                                     ? '<span style="background:#c41e3a;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;">销售</span>'
                                     : '<span style="background:#28a745;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;">收款</span>'}
                             </td>
-                            <td style="padding:6px 8px;border-bottom:1px solid #eee;"><strong>${it.no}</strong></td>
-                            <td style="padding:6px 8px;border-bottom:1px solid #eee;color:#666;">${it.desc}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;"><strong>${escapeHtml(it.no)}</strong></td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;color:#666;">${escapeHtml(it.desc)}</td>
                             <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${it.amount>0?'¥'+it.amount.toFixed(2):'-'}</td>
                             <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;${it.payment>0?'color:#28a745;':''}">${it.payment>0?'+¥'+it.payment.toFixed(2):'-'}</td>
-                            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;${it.balance>0?'color:#c41e3a;':it.balance<0?'color:#28a745;':''}">¥${it.balance.toFixed(2)}</td>
+                            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;${it.balance>0?'color:#c41e3a;':it.balance<0?'color:#28a745;':''}">${formatBalanceDisplay(it.balance)}</td>
                         </tr>`).join('')}</tbody>
                 </table>`
             }
@@ -1732,7 +1837,7 @@ function showCustomerLedger(customerId, customerName) {
 }
 
 function quickNewOrder(customerId) {
-    switchTab('order');
+    switchTab('order', document.querySelector('.nav-tab[data-tab="order"]'));
     setTimeout(() => {
         document.getElementById('orderCustomer').value = customerId;
         onCustomerSelect();
@@ -1744,7 +1849,7 @@ function updateCustomerSelect() {
     const sel = document.getElementById('orderCustomer');
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 请选择客户 --</option>' +
-        customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        customers.map(c => `<option value="${escapeAttr(c.id)}">${escapeHtml(c.name)}</option>`).join('');
     sel.value = curVal;
 }
 
@@ -1775,7 +1880,7 @@ function initOrderPage() {
         }
 
         const products = loadData(DB_KEYS.products);
-        const exact = products.find(p => p.sku.toUpperCase() === q);
+        const exact = products.find(p => String(p.sku || '').toUpperCase() === q);
 
         // Threshold: Chinese chars need only 1; numbers/letters need >= 2
         const isChinese = /[\u4e00-\u9fff]/.test(qRaw);
@@ -1789,7 +1894,7 @@ function initOrderPage() {
 
         // Find fuzzy matches
         let fuzzy = products.filter(p =>
-            p.sku.toUpperCase().includes(q) || p.supplier.toUpperCase().includes(q)
+            String(p.sku || '').toUpperCase().includes(q) || String(p.supplier || '').toUpperCase().includes(q)
         );
         // Remove exact from fuzzy list
         if (exact) fuzzy = fuzzy.filter(p => p.sku !== exact.sku);
@@ -1798,7 +1903,7 @@ function initOrderPage() {
 
         if (exact && fuzzy.length === 0) {
             // Exact match only
-            matchInfo.innerHTML = `<span style="color:#28a745;">✅ 匹配成功 | ¥${exact.price.toFixed(2)} | ${escapeHtml(exact.supplier)}</span>`;
+            matchInfo.innerHTML = `<span style="color:#28a745;">✅ 匹配成功 | ¥${roundMoney(exact.price).toFixed(2)} | ${escapeHtml(exact.supplier)}</span>`;
             matchInfo.dataset.matchedSku = exact.sku;
             matchInfo.dataset.matchedPrice = exact.price;
             matchInfo.dataset.matchedSupplier = exact.supplier;
@@ -1808,19 +1913,20 @@ function initOrderPage() {
             if (!exact) {
                 html += `<div style="color:#666;font-size:12px;margin-bottom:6px;">找到 ${fuzzy.length} 个相似款号，点击选择：</div>`;
             } else {
-                html += `<div style="color:#28a745;margin-bottom:6px;">✅ 精确匹配：<strong>${exact.sku}</strong> ¥${exact.price.toFixed(2)} <small>(${exact.supplier})</small></div>`;
+                html += `<div style="color:#28a745;margin-bottom:6px;">✅ 精确匹配：<strong>${escapeHtml(exact.sku)}</strong> ¥${roundMoney(exact.price).toFixed(2)} <small>(${escapeHtml(exact.supplier)})</small></div>`;
             }
             html += '<div class="match-list">';
             const displayList = exact ? [exact, ...fuzzy] : fuzzy;
             displayList.forEach((p, idx) => {
-                const isExact = p.sku.toUpperCase() === q;
+                const isExact = String(p.sku || '').toUpperCase() === q;
                 html += `<div class="match-item${isExact ? ' match-exact' : ''}"
-                             onclick="selectMatchItem('${escapeJs(p.sku)}', '${p.price}', '${escapeJs(p.supplier)}')">
+                             data-match-index="${idx}" role="button" tabindex="0">
                     <span class="match-sku">${isExact ? '✅ ' : ''}${escapeHtml(p.sku)}</span>
-                    <span class="match-price">¥${p.price.toFixed(2)}</span>
+                    <span class="match-price">¥${roundMoney(p.price).toFixed(2)}</span>
                     <span class="match-sup">${escapeHtml(p.supplier)}</span>
                 </div>`;
             });
+            window._quickMatchProducts = displayList;
             html += '</div>';
             matchInfo.innerHTML = html;
             // Auto-select first for Enter key fallback
@@ -1876,8 +1982,10 @@ function generateOrderNo() {
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
-    const seq = String(incCounter()).padStart(5, '0');
-    document.getElementById('orderNo').textContent = `KMSD${y}${m}${d}${seq}`;
+    const seq = String(getCounter() + 1).padStart(5, '0');
+    const orderNo = `KMSD${y}${m}${d}${seq}`;
+    document.getElementById('orderNo').textContent = orderNo;
+    return orderNo;
 }
 
 function onCustomerSelect() {
@@ -1889,6 +1997,7 @@ function onCustomerSelect() {
     // 切换客户时清空之前的预览
     document.getElementById('printArea').style.display = 'none';
     document.getElementById('printArea').innerHTML = '';
+    lastSavedOrderId = null;
     document.getElementById('receiptPrintArea').style.display = 'none';
     document.getElementById('receiptPrintArea').innerHTML = '';
 
@@ -1906,9 +2015,9 @@ function onCustomerSelect() {
     const customers = loadData(DB_KEYS.customers);
     const c = customers.find(x => x.id === custId);
     if (c) {
-        document.getElementById('prevBalanceDisplay').textContent = `¥${c.balance.toFixed(2)}`;
-        document.getElementById('totalConsumedDisplay').textContent = `¥${c.totalSpent.toFixed(2)}`;
-        document.getElementById('totalPaymentDisplay').textContent = `¥${c.totalPaid.toFixed(2)}`;
+        document.getElementById('prevBalanceDisplay').textContent = formatBalanceDisplay(c.balance);
+        document.getElementById('totalConsumedDisplay').textContent = `¥${roundMoney(c.totalSpent).toFixed(2)}`;
+        document.getElementById('totalPaymentDisplay').textContent = `¥${roundMoney(c.totalPaid).toFixed(2)}`;
     }
 
     // 加载该客户往期销售单
@@ -1918,6 +2027,18 @@ function onCustomerSelect() {
     checkCanSave();
 }
 
+function updateCustomerInfoDisplay() {
+    const customerId = document.getElementById('orderCustomer').value;
+    if (!customerId) return;
+    const customer = loadData(DB_KEYS.customers).find(item => item.id === customerId);
+    if (!customer) return;
+    document.getElementById('prevBalanceDisplay').textContent = formatBalanceDisplay(customer.balance);
+    document.getElementById('totalConsumedDisplay').textContent = `¥${roundMoney(customer.totalSpent).toFixed(2)}`;
+    document.getElementById('totalPaymentDisplay').textContent = `¥${roundMoney(customer.totalPaid).toFixed(2)}`;
+    document.getElementById('prevBalanceSummary').textContent = `¥${roundMoney(customer.balance).toFixed(2)}`;
+    renderCustomerGrid();
+}
+
 // =============================================
 // 往期销售单/收款单展示（完整单据样式，按日期分组）
 // =============================================
@@ -1925,17 +2046,10 @@ function onCustomerSelect() {
 /** 统一日期标准化：各种格式 → YYYY-MM-DD */
 function normalizeDate(dateStr) {
     if (!dateStr) return '';
-    // 处理 "2026/6/17" → "2026-06-17"
-    let s = dateStr.trim().replace(/\//g, '-');
-    const parts = s.split('-');
-    if (parts.length === 3) {
-        // 补零
-        const y = parts[0].padStart(4, '0');
-        const m = parts[1].padStart(2, '0');
-        const d = parts[2].padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-    return s;
+    const s = String(dateStr).trim();
+    const match = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if (!match) return '';
+    return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
 }
 
 /** 格式化日期显示 */
@@ -1956,7 +2070,7 @@ function renderPastOrderHtml(order, thumbMode) {
         `<tr>
             <td>${escapeHtml(it.brand||'-')}</td><td>${escapeHtml(it.sku)}</td><td>内衣</td>
             <td>${it.qty<0?'<span style="color:red;font-weight:bold;">'+it.qty+'件</span>':it.qty+'件'}</td>
-            <td>${it.price.toFixed(2)}</td><td>${(it.qty*it.price).toFixed(2)}</td><td>${escapeHtml(it.remark||'-')}</td>
+            <td>${roundMoney(it.price).toFixed(2)}</td><td>${roundMoney(it.qty*it.price).toFixed(2)}</td><td>${escapeHtml(it.remark||'-')}</td>
         </tr>`
     ).join('');
 
@@ -1970,13 +2084,13 @@ function renderPastOrderHtml(order, thumbMode) {
                 <div style="font-size:${thumbMode?14:18}px;font-weight:bold;color:#c41e3a;">销售单</div>
             </div>
             <div style="text-align:right;font-size:${thumbMode?11:12}px;color:#666;">
-                NO. ${order.orderNo.replace('KMSD','')}<br>${order.orderNo}
+                NO. ${escapeHtml(String(order.orderNo || '').replace('KMSD',''))}<br>${escapeHtml(order.orderNo)}
             </div>
         </div>
         <div style="font-size:${thumbMode?10:12}px;color:#555;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;">
             客户：<strong>${escapeHtml(order.customerName)}</strong>
             电话：${escapeHtml(order.phone || '-')}
-            日期：${order.date}
+            日期：${escapeHtml(order.date)}
         </div>
         <table style="width:100%;border-collapse:collapse;${fontSize}">
             <thead><tr><th>商标</th><th>款号</th><th>类型</th><th>数量</th><th>单价</th><th>金额</th><th>备注</th></tr></thead>
@@ -1984,13 +2098,13 @@ function renderPastOrderHtml(order, thumbMode) {
             <tfoot><tr style="font-weight:bold;background:#f5f5f5;">
                 <td colspan="3">合计：</td>
                 <td>${order.totalQty||0}件</td><td></td>
-                <td>${order.totalAmount.toFixed(2)}</td><td></td>
+                <td>${roundMoney(order.totalAmount).toFixed(2)}</td><td></td>
             </tr></tfoot>
         </table>
         <div style="margin-top:8px;${fontSize}line-height:1.6;">
-            <div>本单金额：<strong style="color:#c41e3a">${order.totalAmount.toFixed(2)}元</strong></div>
-            <div>前次结欠：${order.prevBalance.toFixed(2)}元 &nbsp; 收款金额：<strong style="color:#28a745">${(order.payment||0).toFixed(2)}元</strong></div>
-            <div style="font-weight:bold;color:#c41e3a;margin-top:4px;">结欠金额：${order.finalBalance.toFixed(2)}元 （${numberToChinese(order.finalBalance)}）</div>
+            <div>本单金额：<strong style="color:#c41e3a">${roundMoney(order.totalAmount).toFixed(2)}元</strong></div>
+            <div>前次结欠：${formatBalanceDisplay(order.prevBalance)} &nbsp; 收款金额：<strong style="color:#28a745">¥${roundMoney(order.payment).toFixed(2)}</strong></div>
+            <div style="font-weight:bold;color:${roundMoney(order.finalBalance)<0?'#28a745':'#c41e3a'};margin-top:4px;">结欠金额：${formatBalanceDisplay(order.finalBalance)}（${formatChineseBalance(order.finalBalance)}）</div>
         </div>
     </div>`;
 }
@@ -2008,16 +2122,16 @@ function renderPastPaymentHtml(rec, thumbMode) {
             <div style="color:#28a745;font-size:${thumbMode?16:20}px;font-weight:bold;letter-spacing:2px;">${escapeHtml(rec.customerName)}（收款单）</div>
         </div>
         <table style="width:100%;border-collapse:collapse;${fontSize}margin-bottom:8px;"><tr>
-            <td style="border:none;"><strong>单号：</strong>${rec.receiptNo}</td>
-            <td style="border:none;text-align:right;"><strong>时间：</strong>${timeInfo}</td>
+            <td style="border:none;"><strong>单号：</strong>${escapeHtml(rec.receiptNo)}</td>
+            <td style="border:none;text-align:right;"><strong>时间：</strong>${escapeHtml(timeInfo)}</td>
         </tr></table>
         <table style="width:100%;border-collapse:collapse;${fontSize}border:1px solid #28a745;">
             <tr><td colspan="2"><strong>客户：</strong>${escapeHtml(rec.customerName)} &nbsp; <strong>方式：</strong>${escapeHtml(rec.paymentMethod)}</td></tr>
-            <tr><td><strong>前欠：</strong>${numberToChinese(Math.abs(rec.prevBalance))}</td><td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.prevBalance.toFixed(2)}</td></tr>
+            <tr><td><strong>前欠：</strong>${formatChineseBalance(rec.prevBalance)}</td><td style="text-align:right;font-weight:bold;color:${roundMoney(rec.prevBalance)<0?'#28a745':'#c41e3a'};">${formatBalanceDisplay(rec.prevBalance)}</td></tr>
             <tr><td><strong>汇款：</strong>${numberToChinese(rec.paymentAmount)}</td><td style="text-align:right;font-weight:bold;color:#28a745;">¥${rec.paymentAmount.toFixed(2)}</td></tr>
             <tr style="font-weight:bold;background:#f0fff0;">
-                <td><strong>累欠：</strong>${numberToChinese(Math.abs(rec.newBalance))}</td>
-                <td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.newBalance.toFixed(2)}</td></tr>
+                <td><strong>累欠：</strong>${formatChineseBalance(rec.newBalance)}</td>
+                <td style="text-align:right;font-weight:bold;color:${roundMoney(rec.newBalance)<0?'#28a745':'#c41e3a'};">${formatBalanceDisplay(rec.newBalance)}</td></tr>
         </table>
     </div>`;
 }
@@ -2037,12 +2151,14 @@ function renderCustomerPastOrders() {
     const records = [];
 
     allOrders.forEach(o => {
-        records.push({ type: 'order', data: o, dateKey: normalizeDate(o.date), displayDate: o.date });
+        records.push({ type: 'order', data: o, dateKey: normalizeDate(o.date), displayDate: o.date, sortTime: recordTimestamp(o) });
     });
 
     allPayments.forEach(p => {
-        records.push({ type: 'payment', data: p, dateKey: normalizeDate(p.date), displayDate: p.date + (p.time ? ' ' + p.time : '') });
+        records.push({ type: 'payment', data: p, dateKey: normalizeDate(p.date), displayDate: p.date + (p.time ? ' ' + p.time : ''), sortTime: recordTimestamp(p) });
     });
+
+    updatePastDateFilterRange(records.map(r => ({ date: r.dateKey })));
 
     // 日期筛选
     const filterDateVal = document.getElementById('pastOrderDateFilter').value;
@@ -2053,9 +2169,7 @@ function renderCustomerPastOrders() {
 
     // 排序
     const sortDir = document.getElementById('pastOrderSortFilter').value;
-    filteredRecords.sort((a, b) => sortDir === 'desc'
-        ? b.displayDate.localeCompare(a.displayDate)
-        : a.displayDate.localeCompare(b.displayDate));
+    filteredRecords.sort((a, b) => sortDir === 'desc' ? b.sortTime - a.sortTime : a.sortTime - b.sortTime);
 
     if (filteredRecords.length === 0) {
         body.innerHTML = `<div class="no-past-orders">
@@ -2106,7 +2220,7 @@ function renderCustomerPastOrders() {
             }
 
             html += `
-                <div class="doc-thumb ${thumbClass}" id="dt-${r.type}-${idx}"
+                <div class="doc-thumb ${thumbClass}" id="dt-${dateStr}-${r.type}-${idx}"
                      ondblclick="enlargeDoc(this)"
                      onclick="handleDocClick(event, this)">
                     <div class="doc-thumb-inner">
@@ -2124,26 +2238,20 @@ function renderCustomerPastOrders() {
     body.innerHTML = html;
 }
 
-// 单击处理 - 打印
+let docClickTimer = null;
+
+// 单击稍后打印；若检测到双击则取消，避免双击放大时先弹出打印窗口
 function handleDocClick(e, el) {
-    // 如果已经放大了就不响应单击打印
     if (el.classList.contains('enlarged')) return;
-    // 从id中提取类型和索引来打印
-    const id = el.id; // dt-order-0 或 dt-payment-1
-    const parts = id.split('-');
-    if (parts.length >= 3) {
-        const type = parts[1];
-        // 找到对应的data来打印 - 通过查找内部内容中的单号
-        const innerText = el.innerText;
-        // 直接触发打印该文档
-        printDocElement(el);
-    }
+    clearTimeout(docClickTimer);
+    docClickTimer = setTimeout(() => printDocElement(el), 280);
 }
 
 // 打印某个doc元素的内容
 function printDocElement(el) {
     const content = el.querySelector('.doc-thumb-inner').innerHTML;
     const printWin = window.open('', '_blank', 'width=800,height=900');
+    if (!printWin) { alert('打印窗口被浏览器拦截，请允许本网页打开弹窗后重试。'); return; }
     printWin.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>打印单据</title>
 <style>
@@ -2159,6 +2267,8 @@ body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
 // 双击放大
 let enlargedEl = null;
 function enlargeDoc(el) {
+    clearTimeout(docClickTimer);
+    docClickTimer = null;
     closeEnlarged();
     el.classList.add('enlarged');
     document.getElementById('enlargedOverlay').classList.add('show');
@@ -2191,8 +2301,8 @@ function updatePastDateFilterRange(allRecords) {
 
     const dates = [...new Set(allRecords.map(r => normalizeDate(r.date)))].filter(Boolean).sort();
     if (dates.length > 0) {
-        input.min = dates[dates.length - 1];
-        input.max = dates[0];
+        input.min = dates[0];
+        input.max = dates[dates.length - 1];
     }
 }
 
@@ -2208,12 +2318,16 @@ function handleQuickAdd() {
         return;
     }
 
-    const qty = parseInt(qtyInput.value) || 0;
-    if (qty === 0) { qtyInput.focus(); return; }
+    const qty = Number(qtyInput.value);
+    if (!Number.isSafeInteger(qty) || qty === 0 || Math.abs(qty) > 1000000) {
+        alert('数量必须是非 0 整数，且绝对值不能超过 1,000,000。');
+        qtyInput.focus();
+        return;
+    }
 
     // Try to match from product database
     const products = loadData(DB_KEYS.products);
-    const exactMatch = products.find(p => p.sku.toUpperCase() === skuQuery.toUpperCase());
+    const exactMatch = products.find(p => String(p.sku || '').toUpperCase() === skuQuery.toUpperCase());
     let matchedSku, matchedPrice, matchedSupplier;
 
     if (exactMatch) {
@@ -2249,10 +2363,15 @@ function handleQuickAdd() {
 }
 
 function addToOrderItem(sku, price, supplier, qty) {
+    price = roundMoney(price);
+    if (!Number.isFinite(price) || price <= 0) {
+        alert('商品单价无效，无法加入订单。');
+        return;
+    }
     // 每次添加都作为独立的新行（不合并），方便区分退货/取货/样品/销售等不同场景
     currentOrderItems.push({
         sku: sku,
-        price: parseFloat(price),
+        price: price,
         supplier: supplier,
         qty: qty,
         brand: '',
@@ -2273,9 +2392,9 @@ function renderCurrentOrder() {
                        onchange="updateOrderItem(${i},'brand',this.value)" placeholder="商标"></td>
                 <td><strong>${escapeHtml(item.sku)}</strong></td>
                 <td style="color:#666;">内衣</td>
-                <td><input type="number" class="form-control" style="padding:4px 8px;width:70px;text-align:center;${item.qty<0?'color:#dc3545;font-weight:bold;':''}"
+                <td><input type="number" step="1" class="form-control" style="padding:4px 8px;width:70px;text-align:center;${item.qty<0?'color:#dc3545;font-weight:bold;':''}"
                        value="${item.qty}"
-                       onchange="updateOrderItem(${i},'qty',parseInt(this.value)||0)"></td>
+                       onchange="updateOrderItem(${i},'qty',Number(this.value))"></td>
                 <td>¥${item.price.toFixed(2)}</td>
                 <td><strong style="${amount<0?'color:#dc3545;':''}">¥${amount.toFixed(2)}</strong></td>
                 <td><input type="text" class="form-control" style="padding:4px 8px;width:120px;"
@@ -2287,7 +2406,7 @@ function renderCurrentOrder() {
 
     // Totals
     const totalQty = currentOrderItems.reduce((sum, it) => sum + it.qty, 0);
-    const totalAmt = currentOrderItems.reduce((sum, it) => sum + it.qty * it.price, 0);
+    const totalAmt = roundMoney(currentOrderItems.reduce((sum, it) => sum + it.qty * it.price, 0));
     document.getElementById('orderTotalQty').innerHTML = (totalQty < 0 ? '<span style="color:#dc3545;font-weight:bold;">' + totalQty + '件(含退货)</span>' : totalQty + '件');
     document.getElementById('orderTotalAmount').textContent = '¥' + totalAmt.toFixed(2);
     document.getElementById('thisOrderAmount').textContent = '¥' + totalAmt.toFixed(2);
@@ -2297,7 +2416,14 @@ function renderCurrentOrder() {
 }
 
 function updateOrderItem(idx, field, value) {
-    if (field === 'qty' && value === 0) value = 1;
+    if (!currentOrderItems[idx]) return;
+    if (field === 'qty') {
+        value = Number(value);
+        if (!Number.isSafeInteger(value) || value === 0 || Math.abs(value) > 1000000) {
+            alert('数量必须是非 0 整数，且绝对值不能超过 1,000,000。');
+            return renderCurrentOrder();
+        }
+    }
     currentOrderItems[idx][field] = value;
     renderCurrentOrder();
 }
@@ -2311,7 +2437,9 @@ function clearCurrentOrder() {
     if (currentOrderItems.length > 0 && !confirm('确定清空当前订单吗？')) return;
     currentOrderItems = [];
     document.getElementById('paymentAmount').value = 0;
-    document.getElementById('otherAmount').value = 0;
+    document.getElementById('quickSkuInput').value = '';
+    document.getElementById('quickQtyInput').value = 1;
+    document.getElementById('quickMatchInfo').innerHTML = '';
     renderCurrentOrder();
     updateFinalBalance();
 }
@@ -2320,10 +2448,14 @@ function clearCurrentOrder() {
 function formatPaymentAmount() {
     const el = document.getElementById('paymentAmount');
     let val = el.value.trim();
-    // 移除非数字字符（保留小数点和负号）
-    val = val.replace(/[^\d.\-]/g, '');
+    val = val.replace(/[,，\s¥￥]/g, '');
     if (val === '' || val === '-' || val === '.') {
         el.value = '0';
+        return;
+    }
+    if (!/^-?\d+(\.\d{0,2})?$/.test(val)) {
+        alert('请输入正确金额，最多保留两位小数。');
+        el.value = '0.00';
         return;
     }
     const num = parseFloat(val);
@@ -2332,22 +2464,22 @@ function formatPaymentAmount() {
         return;
     }
     // 保留2位小数
-    el.value = num.toFixed(2);
+    el.value = roundMoney(num).toFixed(2);
 }
 
 function updateFinalBalance() {
     const custId = document.getElementById('orderCustomer').value;
-    const thisAmt = currentOrderItems.reduce((sum, it) => sum + it.qty * it.price, 0);
-    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const thisAmt = roundMoney(currentOrderItems.reduce((sum, it) => sum + it.qty * it.price, 0));
+    const payment = roundMoney(document.getElementById('paymentAmount').value);
 
     let prevBal = 0;
     if (custId) {
         const customers = loadData(DB_KEYS.customers);
         const c = customers.find(x => x.id === custId);
-        if (c) prevBal = c.balance;
+        if (c) prevBal = roundMoney(c.balance);
     }
 
-    const finalBalance = prevBal + thisAmt - payment;
+    const finalBalance = roundMoney(prevBal + thisAmt - payment);
 
     document.getElementById('prevBalanceSummary').textContent = '¥' + prevBal.toFixed(2);
     document.getElementById('paymentAmountDisplay').textContent = '¥' + payment.toFixed(2);
@@ -2359,43 +2491,50 @@ function updateFinalBalance() {
 function checkCanSave() {
     const hasCustomer = !!document.getElementById('orderCustomer').value;
     const hasItems = currentOrderItems.length > 0;
-    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const payment = roundMoney(document.getElementById('paymentAmount').value);
     const canOrder = hasCustomer && hasItems;
     document.getElementById('btnSaveOnly').disabled = !canOrder;
-    document.getElementById('btnPrintOnly').disabled = !canOrder;
-    document.getElementById('btnPrintReceipt').disabled = !(hasCustomer && payment > 0);
+    document.getElementById('btnPrintOnly').disabled = !lastSavedOrderId;
+    const receiptButton = document.getElementById('btnPrintReceipt');
+    receiptButton.disabled = !(hasCustomer && !hasItems && payment > 0);
+    receiptButton.title = hasItems ? '当前有未保存商品，请使用“保存”完成销售单和随单收款。' : '';
 }
 
 // =============================================
 // Save Receipt (保存收款单 - 入账+打印)
 // =============================================
 function saveReceipt() {
+    if (isSavingReceipt) return;
     const custId = document.getElementById('orderCustomer').value;
     if (!custId) { alert('请先选择客户！'); return; }
+    if (currentOrderItems.length > 0) {
+        alert('当前有未保存商品，不能单独保存收款单。\n请点击下方“保存”，系统会一次性保存销售单和随单收款，避免订单金额重复累计。');
+        return;
+    }
 
     const customers = loadData(DB_KEYS.customers);
     const cIdx = customers.findIndex(x => x.id === custId);
     if (cIdx === -1) { alert('客户不存在！'); return; }
     const c = customers[cIdx];
 
-    const thisAmt = currentOrderItems.reduce((s, it) => s + it.qty * it.price, 0);
-    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const payment = roundMoney(document.getElementById('paymentAmount').value);
     if (payment <= 0) { alert('来款金额必须大于 0！'); return; }
+    if (payment > 999999999.99) { alert('来款金额超出允许范围！'); return; }
     const method = document.getElementById('paymentMethod').value;
-    const prevBalance = c.balance;
-    // 收款后新余额：前欠 + 本单(如有) - 来款
-    const newBalance = prevBalance + thisAmt - payment;
+    const prevBalance = roundMoney(c.balance);
+    const newBalance = roundMoney(prevBalance - payment);
+    isSavingReceipt = true;
 
     const now = new Date();
     const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
     const timeStr = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
 
     // Generate receipt number
-    const receiptNo = 'KHZJ' + Date.now().toString().slice(-10);
+    const receiptNo = 'KHZJ' + Date.now().toString().slice(-10) + Math.floor(Math.random() * 10);
 
     // ========== SAVE PAYMENT RECORD ==========
     const paymentRecord = {
-        id: 'P' + Date.now(),
+        id: createRecordId('P'),
         receiptNo: receiptNo,
         date: dateStr,
         time: timeStr,
@@ -2406,7 +2545,7 @@ function saveReceipt() {
         prevBalance: prevBalance,      // 收款前余额
         paymentAmount: payment,         // 本次收款
         paymentMethod: method,          // 收款方式
-        orderAmount: thisAmt,           // 关联的本单金额（可能为0）
+        orderAmount: 0,
         newBalance: newBalance,        // 收款后余额
         remark: ''
     };
@@ -2414,13 +2553,17 @@ function saveReceipt() {
     // Save payment record
     let payments = loadData(DB_KEYS.payments);
     payments.unshift(paymentRecord);   // newest first
-    saveData(DB_KEYS.payments, payments);
-
     // Update customer balance & stats
     c.balance = newBalance;
-    c.totalPaid = (c.totalPaid || 0) + payment;
+    c.totalPaid = roundMoney((Number(c.totalPaid) || 0) + payment);
     customers[cIdx] = c;
-    saveData(DB_KEYS.customers, customers);
+    if (!commitDataTransaction({
+        [DB_KEYS.payments]: payments,
+        [DB_KEYS.customers]: customers
+    })) {
+        isSavingReceipt = false;
+        return;
+    }
 
     // Clear payment field after saving
     document.getElementById('paymentAmount').value = '0';
@@ -2436,6 +2579,7 @@ function saveReceipt() {
     // 刷新往期销售单/收款单列表（必须在生成预览之后）
     renderCustomerPastOrders();
 
+    isSavingReceipt = false;
     alert(`✅ 收款单已保存入账！\n\n收款金额：¥${payment.toFixed(2)} 元\n客户余额更新为：¥${newBalance.toFixed(2)} 元\n\n下方已显示收据单预览及往期记录。`);
 }
 
@@ -2458,7 +2602,7 @@ function generateReceiptPreview(rec) {
         </div>
 
         <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;">
-            <tr><td style="border:none;padding:4px 0;"><strong>单号：</strong>${rec.receiptNo}</td><td style="border:none;text-align:right;padding:4px 0;"><strong>日期：</strong>${dateStr}</td></tr>
+            <tr><td style="border:none;padding:4px 0;"><strong>单号：</strong>${escapeHtml(rec.receiptNo)}</td><td style="border:none;text-align:right;padding:4px 0;"><strong>日期：</strong>${escapeHtml(dateStr)}</td></tr>
         </table>
 
         <table style="width:100%;border-collapse:collapse;font-size:14px;" class="receipt-table">
@@ -2485,7 +2629,7 @@ function generateReceiptPreview(rec) {
         </div>
 
         <div style="margin-top:10px;text-align:right;">
-            <button class="btn btn-primary" onclick="printReceiptNow()">🖨️ 打印收据单</button>
+            <button class="btn btn-primary no-print" onclick="printReceiptNow()">🖨️ 打印收据单</button>
         </div>
     </div>`;
 
@@ -2500,6 +2644,7 @@ function printReceiptNow() {
     const receiptContent = document.getElementById('receiptPrintArea').innerHTML;
     if (!receiptContent) { alert('没有可打印的收据单！'); return; }
     const printWin = window.open('', '_blank', 'width=750,height=650');
+    if (!printWin) { alert('打印窗口被浏览器拦截，请允许本网页打开弹窗后重试。'); return; }
     printWin.document.write(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>收款单</title>
 <style>
@@ -2508,7 +2653,7 @@ body { font-family:'SimSun','宋体',serif; padding:30px 40px; color:#000; font-
 .invoice-container{max-width:700px;margin:0 auto;}
 table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:6px 8px;}
 .amount-red{color:#c41e3a;font-weight:bold;}
-@media print{body *{visibility:hidden;}.invoice-container,.invoice-container *{visibility:visible;}.invoice-container{position:absolute;top:0;left:0;width:100%;}}
+@media print{body *{visibility:hidden;}.invoice-container,.invoice-container *{visibility:visible;}.invoice-container{position:absolute;top:0;left:0;width:100%;}.no-print{display:none!important;}}
 </style></head><body>${receiptContent}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`);
     printWin.document.close();
 }
@@ -2517,6 +2662,7 @@ table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:6px 
 // Save Order Only (保存，不打印)
 // =============================================
 function saveOrderOnly() {
+    if (isSavingOrder) return;
     const custId = document.getElementById('orderCustomer').value;
     if (!custId || currentOrderItems.length === 0) {
         alert('请选择客户并添加商品！'); return;
@@ -2526,18 +2672,27 @@ function saveOrderOnly() {
     const customer = customers.find(c => c.id === custId);
     if (!customer) { alert('客户不存在！'); return; }
 
-    const orderNo = document.getElementById('orderNo').textContent;
-    const orderDate = new Date().toLocaleDateString('zh-CN');
-    const totalQty = currentOrderItems.reduce((s, it) => s + it.qty, 0);
-    const totalAmt = currentOrderItems.reduce((s, it) => s + it.qty * it.price, 0);
-    const payment = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    if (currentOrderItems.some(item => !Number.isSafeInteger(Number(item.qty)) || Number(item.qty) === 0 || !Number.isFinite(Number(item.price)) || Number(item.price) <= 0)) {
+        alert('订单中存在无效数量或价格，请修正后再保存。');
+        return;
+    }
 
-    const prevBalance = customer.balance;
-    const finalBalance = prevBalance + totalAmt - payment;
+    const now = new Date();
+    const nextCounter = getCounter() + 1;
+    const orderNo = `KMSD${formatLocalDate(now).replace(/-/g, '')}${String(nextCounter).padStart(5, '0')}`;
+    const orderDate = formatLocalDate(now);
+    const totalQty = currentOrderItems.reduce((s, it) => s + it.qty, 0);
+    const totalAmt = roundMoney(currentOrderItems.reduce((s, it) => s + it.qty * it.price, 0));
+    const payment = roundMoney(document.getElementById('paymentAmount').value);
+    if (payment < 0 || payment > 999999999.99) { alert('收款金额无效！'); return; }
+
+    const prevBalance = roundMoney(customer.balance);
+    const finalBalance = roundMoney(prevBalance + totalAmt - payment);
+    isSavingOrder = true;
 
     // Build order record
     const order = {
-        id: 'O' + Date.now(),
+        id: createRecordId('O'),
         orderNo: orderNo,
         date: orderDate,
         customerId: custId,
@@ -2557,24 +2712,20 @@ function saveOrderOnly() {
     // Save order
     const orders = loadData(DB_KEYS.orders);
     orders.unshift(order);
-    saveData(DB_KEYS.orders, orders);
-
     // Update customer balance
     customer.balance = finalBalance;
-    customer.totalSpent += totalAmt;
-    customer.totalPaid += payment;
+    customer.totalSpent = roundMoney((Number(customer.totalSpent) || 0) + totalAmt);
+    customer.totalPaid = roundMoney((Number(customer.totalPaid) || 0) + payment);
     const cidx = customers.findIndex(c => c.id === custId);
     if (cidx !== -1) customers[cidx] = customer;
-    saveData(DB_KEYS.customers, customers);
-
     // If this order has payment, also create a linked payment record
+    let allPayments = loadData(DB_KEYS.payments);
     if (payment > 0) {
-        const now = new Date();
         const payRecord = {
-            id: 'P' + Date.now() + '_O',
-            receiptNo: 'KHZJ' + (Date.now().toString().slice(-10)),
-            date: now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'),
-            time: String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'),
+            id: createRecordId('P') + '_O',
+            receiptNo: 'KHZJ' + (Date.now().toString().slice(-10)) + Math.floor(Math.random() * 10),
+            date: formatLocalDate(now),
+            time: formatLocalTime(now),
             customerId: custId,
             customerName: customer.name,
             phone: customer.phone || '',
@@ -2587,13 +2738,22 @@ function saveOrderOnly() {
             remark: `随单${orderNo}收款`,
             orderId: order.id
         };
-        let allPayments = loadData(DB_KEYS.payments);
         allPayments.unshift(payRecord);
-        saveData(DB_KEYS.payments, allPayments);
+    }
+
+    if (!commitDataTransaction({
+        [DB_KEYS.orders]: orders,
+        [DB_KEYS.payments]: allPayments,
+        [DB_KEYS.customers]: customers,
+        [DB_KEYS.orderCounter]: nextCounter
+    })) {
+        isSavingOrder = false;
+        return;
     }
 
     // Generate printable invoice preview in-page
     generateInvoice(order);
+    lastSavedOrderId = order.id;
 
     // Reset form
     currentOrderItems = [];
@@ -2605,6 +2765,7 @@ function saveOrderOnly() {
     renderCurrentOrder();
     generateOrderNo();
     checkCanSave();
+    isSavingOrder = false;
 
     alert(`✅ 销售单 ${orderNo} 已保存成功！\n客户 ${customer.name} 当前结欠：¥${finalBalance.toFixed(2)}\n\n下方已显示销售单预览，可点「打印」按钮输出。`);
 }
@@ -2618,10 +2779,12 @@ function printCurrentInvoice() {
         alert('请先点「保存」生成销售单后再打印！'); return;
     }
     // Open new window and print
-    const orderNo = document.getElementById('orderNo').textContent || '销售单';
+    const savedOrder = loadData(DB_KEYS.orders).find(order => order.id === lastSavedOrderId);
+    const orderNo = savedOrder?.orderNo || document.querySelector('#invoiceDoc .invoice-subno')?.textContent || '销售单';
     const printWin = window.open('', '_blank', 'width=800,height=900');
+    if (!printWin) { alert('打印窗口被浏览器拦截，请允许本网页打开弹窗后重试。'); return; }
     printWin.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>销售单 - ${orderNo}</title>
+<html><head><meta charset="UTF-8"><title>销售单 - ${escapeHtml(orderNo)}</title>
 <style>
 body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
 .invoice-container{max-width:700px;margin:0 auto;border:1px solid #000;padding:25px;}
@@ -2645,8 +2808,8 @@ function generateInvoice(order) {
             <td>${escapeHtml(it.sku)}</td>
             <td>内衣</td>
             <td>${it.qty<0?'<span style="color:red;font-weight:bold;">'+it.qty+'件</span>':it.qty+'件'}</td>
-            <td>${it.price.toFixed(2)}</td>
-            <td>${(it.qty*it.price).toFixed(2)}</td>
+            <td>${roundMoney(it.price).toFixed(2)}</td>
+            <td>${roundMoney(it.qty*it.price).toFixed(2)}</td>
             <td>${escapeHtml(it.remark||'-')}</td>
         </tr>`
     ).join('');
@@ -2661,8 +2824,8 @@ function generateInvoice(order) {
             </div>
             <div class="invoice-no">
                 <span class="label">NO.</span>
-                <span class="value">${order.orderNo.replace('KMSD','')}</span>
-                <div class="invoice-subno">${order.orderNo}</div>
+                <span class="value">${escapeHtml(String(order.orderNo || '').replace('KMSD',''))}</span>
+                <div class="invoice-subno">${escapeHtml(order.orderNo)}</div>
             </div>
         </div>
 
@@ -2680,7 +2843,7 @@ function generateInvoice(order) {
                 一共：1页/当前：1页
             </div>
             <div class="invoice-meta-item" style="text-align:right;">
-                开单日期：${order.date}
+                开单日期：${escapeHtml(order.date)}
             </div>
         </div>
 
@@ -2696,7 +2859,7 @@ function generateInvoice(order) {
                     <td colspan="3"><strong>合 计：</strong></td>
                     <td>${order.totalQty}件</td>
                     <td></td>
-                    <td>${order.totalAmount.toFixed(2)}</td>
+                    <td>${roundMoney(order.totalAmount).toFixed(2)}</td>
                     <td></td>
                 </tr>
             </tbody>
@@ -2704,17 +2867,17 @@ function generateInvoice(order) {
 
         <div class="invoice-summary">
             <div class="summary-line">
-                <span>本单金额 <strong class="amount-red">${order.totalAmount.toFixed(2)}</strong>元</span>
+                <span>本单金额 <strong class="amount-red">${roundMoney(order.totalAmount).toFixed(2)}</strong>元</span>
             </div>
             <div class="summary-line">
-                <span>前次金额 <strong>${order.prevBalance.toFixed(2)}</strong>元 &nbsp;&nbsp;&nbsp;&nbsp; 收款金额 <strong>${order.payment.toFixed(2)}</strong>元</span>
+                <span>前次金额 <strong>${roundMoney(order.prevBalance).toFixed(2)}</strong>元 &nbsp;&nbsp;&nbsp;&nbsp; 收款金额 <strong>${roundMoney(order.payment).toFixed(2)}</strong>元</span>
             </div>
             <div class="summary-line" style="margin-top:8px;">
                 <span>来款情况：</span>
             </div>
             <div class="summary-line total">
-                <span>结欠金额：<strong>${order.finalBalance.toFixed(2)}</strong>元 &nbsp;&nbsp;&nbsp;&nbsp; 结欠金额（大写）：
-                      <strong>${numberToChinese(order.finalBalance)}</strong> 元</span>
+                <span>结欠金额：<strong>${roundMoney(order.finalBalance).toFixed(2)}</strong>元 &nbsp;&nbsp;&nbsp;&nbsp; 结欠金额（大写）：
+                      <strong>${formatChineseBalance(order.finalBalance)}</strong></span>
             </div>
         </div>
 
@@ -2745,8 +2908,9 @@ function reprintOrder() {
 
     if (printContent) {
         const printWin = window.open('', '_blank', 'width=800,height=900');
+        if (!printWin) { alert('打印窗口被浏览器拦截，请允许本网页打开弹窗后重试。'); return; }
         printWin.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>销售单 - ${order.orderNo}</title>
+<html><head><meta charset="UTF-8"><title>销售单 - ${escapeHtml(order.orderNo)}</title>
 <style>
 body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
 .invoice-container{max-width:700px;margin:0 auto;border:1px solid #000;padding:25px;}
@@ -2766,6 +2930,7 @@ th{background:#f5f5f5;}.amount-red{color:#c41e3a;font-weight:bold;}
 function renderHistoryTable() {
     const orders = loadData(DB_KEYS.orders);
     const payments = loadData(DB_KEYS.payments);
+    const linkedOrderIds = new Set(payments.map(p => findLinkedOrderId(p, orders)).filter(Boolean));
     const fcust = document.getElementById('filterCustomer').value;
     const dfrom = document.getElementById('filterDateFrom').value;
     const dto = document.getElementById('filterDateTo').value;
@@ -2774,6 +2939,7 @@ function renderHistoryTable() {
     let items = [];
 
     orders.forEach(o => {
+        const hasLinkedPayment = linkedOrderIds.has(o.id);
         items.push({
             type: 'order',
             id: o.id,
@@ -2782,9 +2948,10 @@ function renderHistoryTable() {
             customerId: o.customerId,
             customerName: o.customerName,
             amount: o.totalAmount,       // 销售金额（正数）
-            payment: o.payment || 0,     // 随单收款
-            balance: o.finalBalance,     // 结欠
-            data: o
+            payment: hasLinkedPayment ? 0 : roundMoney(o.payment),
+            balance: hasLinkedPayment ? roundMoney(o.prevBalance + o.totalAmount) : roundMoney(o.finalBalance),
+            data: o,
+            sortTime: recordTimestamp(o)
         });
     });
 
@@ -2796,19 +2963,20 @@ function renderHistoryTable() {
             date: p.date + ' ' + (p.time||''),
             customerId: p.customerId,
             customerName: p.customerName,
-            amount: p.orderAmount || 0,   // 关联销售金额(可能为0)
+            amount: 0,
             payment: p.paymentAmount,     // 收款金额
             balance: p.newBalance,        // 收款后余额
-            data: p
+            data: p,
+            sortTime: recordTimestamp(p)
         });
     });
 
     // Sort by date desc (newest first)
-    items.sort((a, b) => b.date.localeCompare(a.date));
+    items.sort((a, b) => b.sortTime - a.sortTime);
 
     if (fcust) items = items.filter(x => x.customerId === fcust);
-    if (dfrom) items = items.filter(x => x.date.substring(0,10) >= dfrom);
-    if (dto) items = items.filter(x => x.date.substring(0,10) <= dto);
+    if (dfrom) items = items.filter(x => normalizeDate(x.date) >= dfrom);
+    if (dto) items = items.filter(x => normalizeDate(x.date) <= dto);
 
     const tbody = document.getElementById('historyTableBody');
     if (items.length === 0) {
@@ -2822,15 +2990,15 @@ function renderHistoryTable() {
             <tr style="background:#fff;">
                 <td>${i + 1}</td>
                 <td><span style="background:#c41e3a;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;">销售</span></td>
-                <td><strong>${item.no}</strong></td>
-                <td>${item.date}</td>
+                <td><strong>${escapeHtml(item.no)}</strong></td>
+                <td>${escapeHtml(item.date)}</td>
                 <td>${escapeHtml(item.customerName)}</td>
-                <td>¥${item.amount.toFixed(2)}</td>
-                <td style="color:#28a745;">¥${item.payment.toFixed(2)}</td>
-                <td class="${item.balance > 0 ? 'amount-red' : item.balance < 0 ? '' : ''}">¥${item.balance.toFixed(2)}</td>
+                <td>¥${roundMoney(item.amount).toFixed(2)}</td>
+                <td style="color:#28a745;">¥${roundMoney(item.payment).toFixed(2)}</td>
+                <td class="${item.balance > 0 ? 'amount-red' : ''}" style="${item.balance < 0 ? 'color:#28a745;font-weight:bold;' : ''}">${formatBalanceDisplay(item.balance)}</td>
                 <td>
-                    <button class="btn btn-sm btn-info" onclick="viewOrderDetail('${item.id}')">查看</button>
-                    <button class="btn btn-sm btn-primary" onclick="reprintOrderById('${item.id}')">打印</button>
+                    <button class="btn btn-sm btn-info" data-action="view-order" data-id="${escapeAttr(item.id)}">查看</button>
+                    <button class="btn btn-sm btn-primary" data-action="print-order" data-id="${escapeAttr(item.id)}">打印</button>
                 </td>
             </tr>`;
         } else {
@@ -2838,14 +3006,14 @@ function renderHistoryTable() {
             <tr style="background:#f0fdf4;">
                 <td>${i + 1}</td>
                 <td><span style="background:#28a745;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;">收款</span></td>
-                <td><strong>${item.no}</strong></td>
-                <td>${item.data.date} ${item.data.time||''}</td>
+                <td><strong>${escapeHtml(item.no)}</strong></td>
+                <td>${escapeHtml(item.data.date)} ${escapeHtml(item.data.time||'')}</td>
                 <td>${escapeHtml(item.customerName)}</td>
-                <td>¥${item.amount.toFixed(2)}</td>
-                <td style="color:#28a745;font-weight:bold;">¥${item.payment.toFixed(2)}</td>
-                <td class="${item.balance > 0 ? 'amount-red' : item.balance < 0 ? '' : ''}">¥${item.balance.toFixed(2)}</td>
+                <td>¥${roundMoney(item.amount).toFixed(2)}</td>
+                <td style="color:#28a745;font-weight:bold;">¥${roundMoney(item.payment).toFixed(2)}</td>
+                <td class="${item.balance > 0 ? 'amount-red' : ''}" style="${item.balance < 0 ? 'color:#28a745;font-weight:bold;' : ''}">${formatBalanceDisplay(item.balance)}</td>
                 <td>
-                    <button class="btn btn-sm btn-success" onclick="reprintReceiptById('${item.id}')">打印收款单</button>
+                    <button class="btn btn-sm btn-success" data-action="print-receipt" data-id="${escapeAttr(item.id)}">打印收款单</button>
                 </td>
             </tr>`;
         }
@@ -2872,8 +3040,9 @@ function reprintOrderById(orderId) {
     const printContent = document.getElementById('printArea').innerHTML;
     if (printContent) {
         const printWin = window.open('', '_blank', 'width=800,height=900');
+        if (!printWin) { alert('打印窗口被浏览器拦截，请允许本网页打开弹窗后重试。'); return; }
         printWin.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>销售单 - ${order.orderNo}</title>
+<html><head><meta charset="UTF-8"><title>销售单 - ${escapeHtml(order.orderNo)}</title>
 <style>
 body{font-family:'Microsoft YaHei','SimSun',sans-serif;padding:20px;}
 .invoice-container{max-width:700px;margin:0 auto;border:1px solid #000;padding:25px;}
@@ -2895,8 +3064,9 @@ function reprintReceiptById(paymentId) {
     // 直接弹窗打印（因为可能在历史页面调用，order页面的预览区不可见）
     const dateStr = rec.date + ' ' + (rec.time || '');
     const printWin = window.open('', '_blank', 'width=750,height=700');
+    if (!printWin) { alert('打印窗口被浏览器拦截，请允许本网页打开弹窗后重试。'); return; }
     printWin.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>收款单 - ${rec.receiptNo}</title>
+<html><head><meta charset="utf-8"><title>收款单 - ${escapeHtml(rec.receiptNo)}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'SimSun','宋体',serif;padding:30px 40px;color:#000;font-size:15px;line-height:1.8;}
@@ -2913,7 +3083,7 @@ table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;}td{
 <h2>康梦诗内衣供应链</h2>
 <div class="sub-info">地址：广东省汕头市</div>
 <div class="title-row">${escapeHtml(rec.customerName)}（收款单）</div>
-<table><tr><td style="border:none;"><strong>单号：</strong>${rec.receiptNo}</td><td style="border:none;text-align:right;"><strong>日期：</strong>${dateStr}</td></tr></table>
+<table><tr><td style="border:none;"><strong>单号：</strong>${escapeHtml(rec.receiptNo)}</td><td style="border:none;text-align:right;"><strong>日期：</strong>${escapeHtml(dateStr)}</td></tr></table>
 <table class="receipt-table">
 <tr><td colspan="2"><strong>客户名称：</strong>${escapeHtml(rec.customerName)}&nbsp;&nbsp;&nbsp;&nbsp;<strong>收款帐号：</strong>${escapeHtml(rec.paymentMethod)}</td></tr>
 <tr><td>前欠金额（大写）：<strong>${numberToChinese(Math.abs(rec.prevBalance))}${rec.prevBalance<0?'(多付)':''}</strong></td><td style="text-align:right;font-weight:bold;color:#c41e3a;">¥${rec.prevBalance.toFixed(2)} 元</td></tr>
@@ -2940,21 +3110,21 @@ function viewOrderDetail(orderId) {
 
     const itemsHtml = o.items.map(it =>
         `<tr><td>${escapeHtml(it.sku)}</td><td>${escapeHtml(it.style||'-')}</td><td>${it.qty}</td>
-         <td>¥${it.price.toFixed(2)}</td><td>¥${(it.qty*it.price).toFixed(2)}</td><td>${escapeHtml(it.remark||'-')}</td></tr>`
+         <td>¥${roundMoney(it.price).toFixed(2)}</td><td>¥${roundMoney(it.qty*it.price).toFixed(2)}</td><td>${escapeHtml(it.remark||'-')}</td></tr>`
     ).join('');
 
     document.getElementById('orderDetailContent').innerHTML = `
-        <div style="margin-bottom:15px;"><strong>单号：</strong>${o.orderNo} | <strong>日期：</strong>${o.date} | <strong>客户：</strong>${escapeHtml(o.customerName)}</div>
+        <div style="margin-bottom:15px;"><strong>单号：</strong>${escapeHtml(o.orderNo)} | <strong>日期：</strong>${escapeHtml(o.date)} | <strong>客户：</strong>${escapeHtml(o.customerName)}</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr><th>款号</th><th>款式</th><th>数量</th><th>单价</th><th>金额</th><th>备注</th></tr></thead>
             <tbody>${itemsHtml}</tbody>
         </table>
         <div style="margin-top:15px;line-height:1.8;">
-            <div>本单金额：<strong class="amount-red">¥${o.totalAmount.toFixed(2)}</strong></div>
-            <div>前次结欠：<strong>¥${o.prevBalance.toFixed(2)}</strong> | 收款：<strong style="color:#28a745;">¥${o.payment.toFixed(2)}</strong></div>
-            <div style="font-size:16px;margin-top:8px;">最终结欠：<strong class="amount-red">¥${o.finalBalance.toFixed(2)}</strong> （大写：${numberToChinese(o.finalBalance)}）</div>
+            <div>本单金额：<strong class="amount-red">¥${roundMoney(o.totalAmount).toFixed(2)}</strong></div>
+            <div>前次结欠：<strong>¥${roundMoney(o.prevBalance).toFixed(2)}</strong> | 收款：<strong style="color:#28a745;">¥${roundMoney(o.payment).toFixed(2)}</strong></div>
+            <div style="font-size:16px;margin-top:8px;">最终结欠：<strong class="amount-red">¥${roundMoney(o.finalBalance).toFixed(2)}</strong> （大写：${formatChineseBalance(o.finalBalance)}）</div>
         </div>
-        <input type="hidden" id="viewingOrderId" value="${orderId}">
+        <input type="hidden" id="viewingOrderId" value="${escapeAttr(orderId)}">
     `;
     document.getElementById('orderDetailModal').classList.add('show');
 }
@@ -2964,12 +3134,13 @@ function exportHistory() {
     const payments = loadData(DB_KEYS.payments);
 
     if (orders.length === 0 && payments.length === 0) { alert('没有可导出的数据！'); return; }
+    if (!ensureXlsxAvailable()) return;
 
     const wb = XLSX.utils.book_new();
 
     // Sheet 1: 销售单
     if (orders.length > 0) {
-        const orderRows = orders.map(o => [o.orderNo, o.date, o.customerName, o.totalQty || 0, o.totalAmount.toFixed(2), o.payment.toFixed(2), o.finalBalance.toFixed(2)]);
+        const orderRows = orders.map(o => [o.orderNo, o.date, o.customerName, o.totalQty || 0, roundMoney(o.totalAmount).toFixed(2), roundMoney(o.payment).toFixed(2), roundMoney(o.finalBalance).toFixed(2)]);
         const orderData = [['销售单号','日期','客户','数量','金额','来款','结欠'], ...orderRows];
         const wsOrders = XLSX.utils.aoa_to_sheet(orderData);
         XLSX.utils.book_append_sheet(wb, wsOrders, '销售单');
@@ -2977,8 +3148,8 @@ function exportHistory() {
 
     // Sheet 2: 收款记录
     if (payments.length > 0) {
-        const payRows = payments.map(p => [p.receiptNo, p.date + (p.time ? ' ' + p.time : ''), p.customerName, p.paymentMethod, p.prevBalance.toFixed(2), p.paymentAmount.toFixed(2), p.newBalance.toFixed(2), p.remark || '']);
-        const payData = [['收款单号','时间','客户','收款方式','收款前余额','收款金额','收款后余额','备注'], ...payRows];
+        const payRows = payments.map(p => [p.receiptNo, p.date + (p.time ? ' ' + p.time : ''), p.customerName, p.paymentMethod, roundMoney(p.prevBalance).toFixed(2), roundMoney(p.paymentAmount).toFixed(2), roundMoney(p.newBalance).toFixed(2), p.orderId || '', p.remark || '']);
+        const payData = [['收款单号','时间','客户','收款方式','收款前余额','收款金额','收款后余额','关联订单ID','备注'], ...payRows];
         const wsPayments = XLSX.utils.aoa_to_sheet(payData);
         XLSX.utils.book_append_sheet(wb, wsPayments, '收款记录');
     }
@@ -2990,58 +3161,277 @@ function exportHistory() {
 // Utility Functions
 // =============================================
 function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function escapeJs(str) { return str.replace(/'/g,"\\'").replace(/\\/g,'\\\\').replace(/\n/g,'\\n'); }
+function escapeAttr(str) { return escapeHtml(str); }
+function escapeJs(str) { return String(str ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029'); }
+
+function formatLocalDate(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function formatLocalTime(date = new Date()) {
+    return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+}
+
+function recordTimestamp(record) {
+    const match = String(record?.id || '').match(/(\d{13})/);
+    if (match) return Number(match[1]);
+    const date = normalizeDate(record?.date);
+    const time = record?.time || '00:00:00';
+    const parsed = Date.parse(`${date}T${time}`);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function findLinkedOrderId(payment, orders) {
+    if (payment?.orderId && orders.some(order => order.id === payment.orderId)) return payment.orderId;
+    if (payment?.remark) {
+        const byRemark = orders.find(order => String(payment.remark).includes(order.orderNo));
+        if (byRemark) return byRemark.id;
+    }
+    const candidates = orders.filter(order =>
+        order.customerId === payment.customerId &&
+        normalizeDate(order.date) === normalizeDate(payment.date) &&
+        roundMoney(order.totalAmount) === roundMoney(payment.orderAmount) &&
+        roundMoney(order.payment) === roundMoney(payment.paymentAmount) &&
+        roundMoney(order.prevBalance) === roundMoney(payment.prevBalance) &&
+        roundMoney(order.finalBalance) === roundMoney(payment.newBalance) &&
+        Math.abs(recordTimestamp(order) - recordTimestamp(payment)) < 10000
+    );
+    return candidates.length === 1 ? candidates[0].id : null;
+}
 
 function numberToChinese(num) {
-    num = Math.abs(num);
     const digits = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
-    const units = ['','拾','佰','仟'];
-    const bigUnits = ['','万','亿'];
+    const smallUnits = ['','拾','佰','仟'];
+    const sectionUnits = ['','万','亿','兆'];
+    const cents = Math.round(Math.abs(Number(num) || 0) * 100);
+    let integer = Math.floor(cents / 100);
+    const jiao = Math.floor((cents % 100) / 10);
+    const fen = cents % 10;
 
-    if (num === 0) return '零元整';
-
-    let intPart = Math.floor(num);
-    let decPart = Math.round((num - intPart) * 100);
-
-    let result = '';
-    if (intPart > 0) {
-        let intStr = String(intPart);
-        let zeroFlag = false;
-
-        for (let i = 0; i < intStr.length; i++) {
-            const digit = parseInt(intStr[i]);
-            const pos = intStr.length - 1 - i;
-            const bigUnitPos = Math.floor(pos / 4);
-            const smallUnitPos = pos % 4;
-
+    function sectionToChinese(section) {
+        let result = '';
+        let zeroPending = false;
+        for (let unitIndex = 3; unitIndex >= 0; unitIndex--) {
+            const divisor = Math.pow(10, unitIndex);
+            const digit = Math.floor(section / divisor) % 10;
             if (digit === 0) {
-                zeroFlag = true;
-                if (smallUnitPos === 0 && bigUnitPos > 0) {
-                    result += bigUnits[bigUnitPos];
-                }
+                if (result) zeroPending = true;
             } else {
-                if (zeroFlag) { result += digits[0]; zeroFlag = false; }
-                result += digits[digit] + units[smallUnitPos];
-                if (smallUnitPos === 0 && bigUnitPos > 0) {
-                    result += bigUnits[bigUnitPos];
-                }
+                if (zeroPending) result += digits[0];
+                result += digits[digit] + smallUnits[unitIndex];
+                zeroPending = false;
             }
         }
-        result += '元';
+        return result;
     }
 
-    if (decPart > 0) {
-        const jiao = Math.floor(decPart / 10);
-        const fen = decPart % 10;
-        result += (jiao > 0 ? digits[jiao] + '角' : '') + (fen > 0 ? digits[fen] + '分' : '');
-    } else {
-        result += '整';
+    let integerText = '';
+    let sectionIndex = 0;
+    let needZero = false;
+    while (integer > 0) {
+        const section = integer % 10000;
+        if (needZero && integerText && !integerText.startsWith(digits[0])) integerText = digits[0] + integerText;
+        if (section > 0) integerText = sectionToChinese(section) + sectionUnits[sectionIndex] + integerText;
+        needZero = section > 0 && section < 1000;
+        integer = Math.floor(integer / 10000);
+        sectionIndex++;
     }
 
+    let result = (integerText || digits[0]) + '元';
+    if (jiao === 0 && fen === 0) return result + '整';
+    if (jiao > 0) result += digits[jiao] + '角';
+    else if (fen > 0) result += digits[0];
+    if (fen > 0) result += digits[fen] + '分';
     return result;
+}
+
+function formatChineseBalance(value) {
+    const amount = roundMoney(value);
+    return numberToChinese(Math.abs(amount)) + (amount < 0 ? '（客户多付）' : '');
+}
+
+function formatSignedMoney(value) {
+    const amount = roundMoney(value);
+    return amount < 0 ? `-¥${Math.abs(amount).toFixed(2)}` : `¥${amount.toFixed(2)}`;
+}
+
+function formatBalanceDisplay(value) {
+    const amount = roundMoney(value);
+    const label = amount > 0 ? '客户欠款' : amount < 0 ? '客户多付' : '已结清';
+    return `${formatSignedMoney(amount)}（${label}）`;
+}
+
+function auditFinancialData(source) {
+    const customers = Array.isArray(source.customers) ? source.customers : [];
+    const orders = Array.isArray(source.orders) ? source.orders : [];
+    const payments = Array.isArray(source.payments) ? source.payments : [];
+    const customerMap = new Map(customers.map(customer => [customer.id, customer]));
+    const acknowledgedReceiptGapIds = new Set((source.businessDecisions?.acknowledgedReceiptGaps || []).map(item => item.orderId));
+    const balances = new Map();
+    const issues = [];
+
+    const addBalance = (customerId, amount) => {
+        balances.set(customerId, roundMoney((balances.get(customerId) || 0) + amount));
+    };
+
+    const duplicateValues = (records, field) => {
+        const seen = new Set();
+        const duplicates = new Set();
+        records.forEach(record => {
+            const value = String(record?.[field] || '').trim();
+            if (!value) return;
+            if (seen.has(value)) duplicates.add(value);
+            seen.add(value);
+        });
+        return [...duplicates];
+    };
+
+    duplicateValues(customers, 'id').forEach(id => issues.push({ level: 'error', text: `客户 ID 重复：${id}` }));
+    duplicateValues(orders, 'id').forEach(id => issues.push({ level: 'error', text: `订单 ID 重复：${id}` }));
+    duplicateValues(orders, 'orderNo').forEach(no => issues.push({ level: 'error', text: `销售单号重复：${no}` }));
+    duplicateValues(payments, 'id').forEach(id => issues.push({ level: 'error', text: `收款 ID 重复：${id}` }));
+    duplicateValues(payments, 'receiptNo').forEach(no => issues.push({ level: 'error', text: `收款单号重复：${no}` }));
+
+    const linkedOrderIds = new Set();
+    payments.forEach(payment => {
+        const orderId = findLinkedOrderId(payment, orders);
+        if (orderId) linkedOrderIds.add(orderId);
+        if (!customerMap.has(payment.customerId)) {
+            issues.push({ level: 'error', text: `孤立收款 ${payment.receiptNo || payment.id}：客户 ${payment.customerName || payment.customerId} 已不存在` });
+        }
+        if (!orderId && Math.abs(roundMoney(payment.orderAmount)) > 0) {
+            issues.push({ level: 'error', text: `旧版重复累计风险 ${payment.receiptNo || payment.id}：独立收款记录仍含订单金额 ¥${roundMoney(payment.orderAmount).toFixed(2)}` });
+        }
+        addBalance(payment.customerId, -roundMoney(payment.paymentAmount));
+    });
+
+    orders.forEach(order => {
+        if (!customerMap.has(order.customerId)) {
+            issues.push({ level: 'error', text: `孤立订单 ${order.orderNo || order.id}：客户 ${order.customerName || order.customerId} 已不存在，应收可能未显示` });
+        }
+        addBalance(order.customerId, roundMoney(order.totalAmount));
+        if (roundMoney(order.payment) > 0 && !linkedOrderIds.has(order.id)) {
+            addBalance(order.customerId, -roundMoney(order.payment));
+            if (!acknowledgedReceiptGapIds.has(order.id)) {
+                issues.push({ level: 'warning', text: `订单 ${order.orderNo || order.id} 内有来款 ¥${roundMoney(order.payment).toFixed(2)}，但没有对应收款凭证；余额已兼容计算，请补核凭证` });
+            }
+        }
+    });
+
+    customers.forEach(customer => {
+        const computed = roundMoney(balances.get(customer.id) || 0);
+        const stored = roundMoney(customer.balance);
+        if (Math.abs(computed - stored) >= 0.01) {
+            issues.push({ level: 'error', text: `${customer.name || customer.id} 余额不一致：客户表 ¥${stored.toFixed(2)}，按流水重算 ¥${computed.toFixed(2)}，相差 ¥${roundMoney(stored - computed).toFixed(2)}` });
+        }
+    });
+
+    const totalSales = roundMoney(orders.reduce((sum, order) => sum + roundMoney(order.totalAmount), 0));
+    const paymentReceipts = roundMoney(payments.reduce((sum, payment) => sum + roundMoney(payment.paymentAmount), 0));
+    const legacyEmbeddedPayments = roundMoney(orders.reduce((sum, order) => sum + (linkedOrderIds.has(order.id) ? 0 : Math.max(0, roundMoney(order.payment))), 0));
+    const totalPayments = roundMoney(paymentReceipts + legacyEmbeddedPayments);
+    const storedReceivable = roundMoney(customers.reduce((sum, customer) => sum + roundMoney(customer.balance), 0));
+    const computedReceivable = roundMoney([...balances.values()].reduce((sum, balance) => sum + balance, 0));
+
+    return { issues, totalSales, totalPayments, paymentReceipts, legacyEmbeddedPayments, storedReceivable, computedReceivable };
+}
+
+function runFinancialAudit() {
+    const result = auditFinancialData({
+        customers: loadData(DB_KEYS.customers),
+        orders: loadData(DB_KEYS.orders),
+        payments: loadData(DB_KEYS.payments),
+        businessDecisions: loadBusinessDecisions()
+    });
+    const target = document.getElementById('dataAuditResult');
+    const errors = result.issues.filter(issue => issue.level === 'error');
+    const warnings = result.issues.filter(issue => issue.level === 'warning');
+    const healthy = errors.length === 0;
+    target.style.display = 'block';
+    target.style.background = healthy ? '#effaf2' : '#fff2f2';
+    target.style.border = `1px solid ${healthy ? '#28a745' : '#dc3545'}`;
+    target.innerHTML = `
+        <strong>${healthy ? '✅ 资金主账一致' : `❌ 发现 ${errors.length} 项资金错误或高风险问题`}</strong><br>
+        销售累计：¥${result.totalSales.toFixed(2)}；收款累计：¥${result.totalPayments.toFixed(2)}；流水重算应收：¥${result.computedReceivable.toFixed(2)}；客户表应收：¥${result.storedReceivable.toFixed(2)}
+        ${result.legacyEmbeddedPayments ? `<br>其中旧版无凭证内嵌来款：¥${result.legacyEmbeddedPayments.toFixed(2)}` : ''}
+        ${result.issues.length ? `<div style="margin-top:10px;">${result.issues.map(issue => `<div style="color:${issue.level === 'error' ? '#b02a37' : '#856404'};">${issue.level === 'error' ? '•' : '⚠'} ${escapeHtml(issue.text)}</div>`).join('')}</div>` : '<div style="margin-top:8px;color:#28a745;">订单、收款、客户余额和记录关联均通过检查。</div>'}
+    `;
+}
+
+function validateBackupData(data) {
+    const errors = [];
+    const isFiniteNumber = value => Number.isFinite(Number(value));
+    const requireArray = key => {
+        if (!Array.isArray(data?.[key])) errors.push(`${key} 必须是数组`);
+    };
+
+    if (!data || typeof data !== 'object') return ['备份内容不是对象'];
+    if (data.appName !== '康梦诗内衣供应链销售开单系统') errors.push('应用名称不匹配');
+    ['products', 'customers', 'orders', 'payments'].forEach(requireArray);
+    if (errors.length) return errors;
+    if (data.businessDecisions !== undefined && (!data.businessDecisions || typeof data.businessDecisions !== 'object' || Array.isArray(data.businessDecisions))) {
+        errors.push('业务确认数据格式无效');
+    }
+
+    const checkUnique = (records, field, label) => {
+        const seen = new Set();
+        records.forEach((record, index) => {
+            const value = String(record?.[field] || '').trim();
+            if (!value) errors.push(`${label}第 ${index + 1} 条缺少 ${field}`);
+            else if (seen.has(value)) errors.push(`${label}${field} 重复：${value}`);
+            seen.add(value);
+        });
+    };
+
+    checkUnique(data.customers, 'id', '客户');
+    checkUnique(data.orders, 'id', '订单');
+    checkUnique(data.orders, 'orderNo', '订单');
+    checkUnique(data.payments, 'id', '收款');
+    checkUnique(data.payments, 'receiptNo', '收款');
+    const customerIds = new Set(data.customers.map(customer => customer.id));
+    const orderIds = new Set(data.orders.map(order => order.id));
+
+    data.products.forEach((product, index) => {
+        if (!String(product?.sku || '').trim()) errors.push(`商品第 ${index + 1} 条缺少款号`);
+        if (!isFiniteNumber(product?.price) || Number(product.price) < 0) errors.push(`商品 ${product?.sku || index + 1} 价格无效`);
+    });
+    data.customers.forEach((customer, index) => {
+        if (!String(customer?.name || '').trim()) errors.push(`客户第 ${index + 1} 条缺少名称`);
+        ['balance', 'totalSpent', 'totalPaid'].forEach(field => {
+            if (!isFiniteNumber(customer?.[field])) errors.push(`客户 ${customer?.name || index + 1} 的 ${field} 无效`);
+        });
+    });
+    data.orders.forEach((order, index) => {
+        const label = order?.orderNo || index + 1;
+        if (!customerIds.has(order?.customerId)) errors.push(`订单 ${label} 引用了不存在的客户`);
+        if (!Array.isArray(order?.items) || order.items.length === 0) errors.push(`订单 ${label} 没有商品明细`);
+        ['totalAmount', 'prevBalance', 'payment', 'finalBalance'].forEach(field => {
+            if (!isFiniteNumber(order?.[field])) errors.push(`订单 ${label} 的 ${field} 无效`);
+        });
+        if (Array.isArray(order?.items)) {
+            const itemTotal = roundMoney(order.items.reduce((sum, item) => sum + Number(item?.qty) * Number(item?.price), 0));
+            order.items.forEach((item, itemIndex) => {
+                if (!Number.isSafeInteger(Number(item?.qty)) || Number(item.qty) === 0 || !isFiniteNumber(item?.price) || Number(item.price) <= 0) {
+                    errors.push(`订单 ${label} 第 ${itemIndex + 1} 项数量或价格无效`);
+                }
+            });
+            if (isFiniteNumber(order?.totalAmount) && Math.abs(itemTotal - roundMoney(order.totalAmount)) >= 0.01) errors.push(`订单 ${label} 明细合计与订单金额不符`);
+        }
+    });
+    data.payments.forEach((payment, index) => {
+        const label = payment?.receiptNo || index + 1;
+        if (!customerIds.has(payment?.customerId)) errors.push(`收款 ${label} 引用了不存在的客户`);
+        if (payment?.orderId && !orderIds.has(payment.orderId)) errors.push(`收款 ${label} 关联的订单不存在`);
+        ['prevBalance', 'paymentAmount', 'newBalance'].forEach(field => {
+            if (!isFiniteNumber(payment?.[field])) errors.push(`收款 ${label} 的 ${field} 无效`);
+        });
+        if (isFiniteNumber(payment?.paymentAmount) && Number(payment.paymentAmount) < 0) errors.push(`收款 ${label} 金额不能为负数`);
+    });
+    if (!Number.isSafeInteger(Number(data.orderCounter)) || Number(data.orderCounter) < 0) errors.push('销售单计数器无效');
+    return errors.slice(0, 50);
 }
 
 // =============================================
@@ -3049,14 +3439,15 @@ function numberToChinese(num) {
 // =============================================
 function exportAllData() {
     const backup = {
-        version: '1.1',
+        version: APP_DATA_VERSION,
         exportTime: new Date().toISOString(),
         appName: '康梦诗内衣供应链销售开单系统',
         products: loadData(DB_KEYS.products),
         customers: loadData(DB_KEYS.customers),
         orders: loadData(DB_KEYS.orders),
         payments: loadData(DB_KEYS.payments),
-        orderCounter: getCounter()
+        orderCounter: getCounter(),
+        businessDecisions: loadBusinessDecisions()
     };
 
     const jsonStr = JSON.stringify(backup, null, 2);
@@ -3070,13 +3461,13 @@ function exportAllData() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 
     // Update last backup time
     document.getElementById('dataLastBackup').textContent = '刚刚';
     localStorage.setItem('kms_last_backup', new Date().toLocaleString('zh-CN'));
 
-    alert(`✅ 数据导出成功！\n\n商品：${backup.products.length} 条\n客户：${backup.customers.length} 个\n订单：${backup.orders.length} 单\n\n请妥善保管此备份文件。`);
+    alert(`✅ 数据导出成功！\n\n商品：${backup.products.length} 条\n客户：${backup.customers.length} 个\n订单：${backup.orders.length} 单\n收款记录：${backup.payments.length} 条\n\n请妥善保管此备份文件。`);
 }
 
 function importAllData(event) {
@@ -3090,11 +3481,17 @@ function importAllData(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const data = JSON.parse(e.target.result);
+            const data = JSON.parse(String(e.target.result).replace(/^\uFEFF/, ''));
+            const validationErrors = validateBackupData(data);
+            if (validationErrors.length) {
+                alert(`❌ 备份校验失败，未覆盖任何现有数据：\n\n${validationErrors.join('\n')}`);
+                return;
+            }
 
-            // Basic validation
-            if (!data.appName || !data.products || !data.customers || !data.orders) {
-                alert('❌ 文件格式不正确，不是有效的康梦诗数据备份文件！');
+            const audit = auditFinancialData(data);
+            const auditErrors = audit.issues.filter(issue => issue.level === 'error');
+            if (auditErrors.length) {
+                alert(`❌ 备份存在资金错误或孤立记录，已拒绝导入：\n\n${auditErrors.slice(0, 20).map(issue => issue.text).join('\n')}\n\n请先使用审计修复版备份。`);
                 return;
             }
 
@@ -3103,18 +3500,20 @@ function importAllData(event) {
 `商品：${data.products.length} 条（当前 ${loadData(DB_KEYS.products).length} 条）\n` +
 `客户：${data.customers.length} 个（当前 ${loadData(DB_KEYS.customers).length} 个）\n` +
 `订单：${data.orders.length} 单（当前 ${loadData(DB_KEYS.orders).length} 单）\n` +
+`收款：${data.payments.length} 条（当前 ${loadData(DB_KEYS.payments).length} 条）\n` +
 `备份时间：${data.exportTime ? new Date(data.exportTime).toLocaleString('zh-CN') : '未知'}\n\n确定要继续吗？`;
 
             if (!confirm(confirmMsg)) return;
 
-            // Import data
-            saveData(DB_KEYS.products, data.products || []);
-            saveData(DB_KEYS.customers, data.customers || []);
-            saveData(DB_KEYS.orders, data.orders || []);
-            saveData(DB_KEYS.payments, data.payments || []);
-            if (data.orderCounter !== undefined) {
-                localStorage.setItem(DB_KEYS.orderCounter, data.orderCounter);
-            }
+            const imported = commitDataTransaction({
+                [DB_KEYS.products]: data.products,
+                [DB_KEYS.customers]: data.customers,
+                [DB_KEYS.orders]: data.orders,
+                [DB_KEYS.payments]: data.payments,
+                [DB_KEYS.orderCounter]: Number(data.orderCounter),
+                [DB_KEYS.businessDecisions]: data.businessDecisions || {}
+            }, { allowCorrupt: true });
+            if (!imported) return;
             if (data.exportTime) {
                 localStorage.setItem('kms_last_backup', new Date(data.exportTime).toLocaleString('zh-CN'));
             }
@@ -3164,12 +3563,61 @@ function refreshDataStats() {
     document.getElementById('dataLastBackup').textContent = lastBackup === '-' ? '-' : lastBackup;
 }
 
+function installDelegatedHandlers() {
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                switchTab(tab.dataset.tab, tab);
+            }
+        });
+    });
+
+    document.getElementById('productTableBody').addEventListener('click', event => {
+        const button = event.target.closest('[data-action="delete-product"]');
+        if (button) deleteProduct(button.dataset.sku);
+    });
+
+    document.getElementById('customerGrid').addEventListener('click', event => {
+        const card = event.target.closest('.customer-card[data-customer-id]');
+        if (!card) return;
+        const customerId = card.dataset.customerId;
+        const action = event.target.closest('[data-action]')?.dataset.action;
+        if (action === 'quick-order') quickNewOrder(customerId);
+        else if (action === 'ledger') showCustomerLedger(customerId);
+        else if (action === 'delete-customer') deleteCustomer(customerId);
+        else showCustomerModal(customerId);
+    });
+
+    const selectMatchFromEvent = event => {
+        const item = event.target.closest('.match-item[data-match-index]');
+        if (!item) return;
+        if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        const product = window._quickMatchProducts?.[Number(item.dataset.matchIndex)];
+        if (product) selectMatchItem(product.sku, product.price, product.supplier);
+    };
+    document.getElementById('quickMatchInfo').addEventListener('click', selectMatchFromEvent);
+    document.getElementById('quickMatchInfo').addEventListener('keydown', selectMatchFromEvent);
+
+    document.getElementById('historyTableBody').addEventListener('click', event => {
+        const button = event.target.closest('[data-action][data-id]');
+        if (!button) return;
+        const id = button.dataset.id;
+        if (button.dataset.action === 'view-order') viewOrderDetail(id);
+        else if (button.dataset.action === 'print-order') reprintOrderById(id);
+        else if (button.dataset.action === 'print-receipt') reprintReceiptById(id);
+    });
+}
+
 // =============================================
 // Initialize
 // =============================================
 window.onload = function() {
+    loadBusinessDecisions();
     renderProductTable();
     renderCustomerGrid();
+    installDelegatedHandlers();
 
     // Manual product form: Enter key support
     document.getElementById('manualSku').addEventListener('keydown', function(e) {
@@ -3181,6 +3629,11 @@ window.onload = function() {
     document.getElementById('manualSupplier').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); addManualProduct(); }
     });
+
+    if (corruptedDataKeys.size) {
+        const keys = [...corruptedDataKeys.keys()].join('、');
+        setTimeout(() => alert(`❌ 检测到本地数据损坏：${keys}\n\n系统已停止覆盖这些数据。请先保留浏览器存储并使用有效备份恢复。`), 0);
+    }
 };
 </script>
 
