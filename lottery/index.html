@@ -94,6 +94,16 @@ tr:hover td{background:#fff8f0}
 .idx-bayes{background:linear-gradient(135deg,#c0392b,#922b21)}
 .recommend-card .nums{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .recommend-card .nums .sep{color:#ccc;font-weight:700;margin:0 3px}
+.saved-history{margin-top:18px;border-top:1px solid #dde;padding-top:14px}
+.saved-history-title{font-size:14px;font-weight:700;color:#2c3e50;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.saved-history-list{display:grid;gap:8px;max-height:280px;overflow-y:auto}
+.saved-item{background:#fff;border:1px solid #e5e8f0;border-radius:8px;padding:10px 12px}
+.saved-item-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;font-size:12px;color:#667;flex-wrap:wrap}
+.saved-item-time{font-weight:700;color:#2c3e50}
+.saved-item-actions{display:flex;gap:6px;align-items:center}
+.saved-copy,.saved-clear{border:1px solid #ccd;background:#f8f9ff;color:#2c3e50;border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer}
+.saved-clear{background:#fff8f8;color:#922b21}
+.saved-item-body{font-family:"Courier New",monospace;font-size:12px;line-height:1.6;color:#333;white-space:pre-wrap;max-height:90px;overflow:auto;background:#fafafa;border-radius:6px;padding:8px}
 
 /* Math Formula Info */
 .formula-info{background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:20px;border:1px solid #e0e0e0}
@@ -230,6 +240,7 @@ tr:hover td{background:#fff8f0}
           <button class="btn-copy" onclick="copyRecommendations(false)">复制数字</button>
         </div>
         <div class="recommend-grid" id="ssq-recommend"></div>
+        <div class="saved-history" id="ssq-saved-history"></div>
       </div>
     </div>
 
@@ -297,6 +308,7 @@ tr:hover td{background:#fff8f0}
           <button class="btn-copy" onclick="copyRecommendations(true)">复制数字</button>
         </div>
         <div class="recommend-grid" id="dlt-recommend"></div>
+        <div class="saved-history" id="dlt-saved-history"></div>
       </div>
     </div>
   </div>
@@ -608,6 +620,7 @@ function generateRecommend(mathResult,totalNums,pickCount,secFreq,secPickCount,c
     groups.push({group:[...finalMain,...finalSec],strategy:strat.label,cls:strat.cls});
   }
   if(isDLT)window._lastDLTGroups=groups;else window._lastSSQGroups=groups;
+  saveGeneratedRecord(isDLT?'dlt':'ssq',groups);
   renderRecommendCardsProper(containerId,groups,isDLT);
 }
 function dataFor(isDLT){return isDLT?DLT_DATA:SSQ_DATA}
@@ -658,6 +671,7 @@ function digitPanelHtml(type,title){
         <button class="btn-copy" onclick="copyDigitRecommendations('${prefix}')">复制数字</button>
       </div>
       <div class="recommend-grid" id="${prefix}-recommend"></div>
+      <div class="saved-history" id="${prefix}-saved-history"></div>
     </div>
   </div>`;
 }
@@ -675,6 +689,51 @@ function ensureExtraGamesUi(){
 
 function formatRecommendationText(groups){
   return groups.map(g=>g.group.map(n=>String(n)).join(', ')).join('\n');
+}
+
+function gameLabel(key){return {ssq:'双色球',dlt:'大乐透',fc3d:'福彩3D',pl3:'排列3'}[key]||key}
+function storageKey(key){return `lottery_saved_${key}_v1`}
+function nowText(){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function loadSavedRecords(key){
+  try{return JSON.parse(localStorage.getItem(storageKey(key))||'[]')}catch(e){return []}
+}
+function saveRecords(key,records){
+  try{localStorage.setItem(storageKey(key),JSON.stringify(records.slice(0,30)))}catch(e){}
+}
+function saveGeneratedRecord(key,groups){
+  if(!groups||!groups.length)return;
+  const text=formatRecommendationText(groups);
+  const records=loadSavedRecords(key);
+  records.unshift({id:Date.now(),time:nowText(),count:groups.length,text});
+  saveRecords(key,records);
+  renderSavedHistory(key);
+}
+function renderSavedHistory(key){
+  const box=document.getElementById(`${key}-saved-history`);
+  if(!box)return;
+  const records=loadSavedRecords(key);
+  const title=`<div class="saved-history-title"><span>${gameLabel(key)}生成记录（本机保存，最多30次）</span>${records.length?`<button class="saved-clear" onclick="clearSavedHistory('${key}')">清空记录</button>`:''}</div>`;
+  if(!records.length){box.innerHTML=title+`<div class="saved-item"><div class="saved-item-head">暂无生成记录</div></div>`;return}
+  box.innerHTML=title+`<div class="saved-history-list">`+records.map(r=>`<div class="saved-item">
+    <div class="saved-item-head"><span class="saved-item-time">${r.time}</span><span>${r.count}组</span><span class="saved-item-actions"><button class="saved-copy" onclick="copySavedRecord('${key}',${r.id})">复制本次</button></span></div>
+    <div class="saved-item-body">${escapeHtml(r.text)}</div>
+  </div>`).join('')+`</div>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function copySavedRecord(key,id){
+  const rec=loadSavedRecords(key).find(r=>r.id===id);
+  if(!rec)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(rec.text)}
+  else copyTextFallback(rec.text);
+}
+function clearSavedHistory(key){
+  if(!confirm(`确定清空${gameLabel(key)}的生成记录吗？`))return;
+  saveRecords(key,[]);
+  renderSavedHistory(key);
 }
 
 function copyTextFallback(text){
@@ -786,6 +845,7 @@ function generateDigitGame(type){
     groups.push({group:nums,strategy:['分位频率','贝叶斯后验','遗漏风险','近期趋势','随机扰动'][g%5],cls:['idx-freq','idx-bayes','idx-miss','idx-markov','idx-game'][g%5]});
   }
   window[`_last_${type}_Groups`]=groups;
+  saveGeneratedRecord(type,groups);
   renderDigitRecommendCards(type,groups);
 }
 function renderDigitRecommendCards(type,groups){
@@ -967,7 +1027,7 @@ function switchTab(type){
   document.getElementById(`panel-${type}`)?.classList.remove('hidden');
 }
 
-refreshUiCopy();initSSQ();initDLT();initDigitGame('fc3d');initDigitGame('pl3');
+refreshUiCopy();initSSQ();initDLT();initDigitGame('fc3d');initDigitGame('pl3');['ssq','dlt','fc3d','pl3'].forEach(renderSavedHistory);
 </script>
 </body>
 </html>
