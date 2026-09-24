@@ -686,11 +686,87 @@
         .badge-warning { background: #ffc107; color: #333; }
         .badge-info { background: #17a2b8; color: white; }
 
+        /* Customer SKU quantity statistics */
+        .customer-product-stats {
+            margin-bottom: 22px;
+            padding: 18px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f7f8ff 0%, #ffffff 100%);
+        }
+
+        .customer-product-stats h3 {
+            margin: 0 0 6px;
+            color: #3f4d9a;
+            font-size: 18px;
+        }
+
+        .customer-product-stats .stats-description {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+
+        .product-stats-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .product-stats-filter label {
+            display: block;
+            margin-bottom: 5px;
+            color: #444;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .product-stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .product-stats-summary-card {
+            padding: 14px 10px;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #e1e4f5;
+            text-align: center;
+        }
+
+        .product-stats-summary-card strong {
+            display: block;
+            margin-top: 4px;
+            color: #3f4d9a;
+            font-size: 22px;
+        }
+
+        .product-stats-table-wrap {
+            overflow-x: auto;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .product-stats-empty {
+            margin-top: 15px;
+            padding: 22px;
+            border: 1px dashed #b8bfe8;
+            border-radius: 8px;
+            color: #777;
+            text-align: center;
+            background: white;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .order-header { grid-template-columns: 1fr; }
             .invoice-meta { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
+            .product-stats-filters { grid-template-columns: 1fr; }
+            .product-stats-summary { grid-template-columns: 1fr 1fr; }
             .sign-row { flex-direction: column; gap: 10px; }
         }
 
@@ -1157,6 +1233,46 @@
         <div class="panel">
             <h2 class="panel-title">历史订单记录</h2>
 
+            <div class="customer-product-stats">
+                <h3>📦 客户拿货统计</h3>
+                <div class="stats-description">选择客户和款号，可查看全部、某个月或某一年的拿货数量。退货会单独列出，并计算净拿货件数。</div>
+                <div class="product-stats-filters">
+                    <div class="product-stats-filter">
+                        <label for="productStatsCustomer">客户</label>
+                        <select class="form-control" id="productStatsCustomer" onchange="onProductStatsCustomerChange()">
+                            <option value="">-- 请选择客户 --</option>
+                        </select>
+                    </div>
+                    <div class="product-stats-filter">
+                        <label for="productStatsSku">款号</label>
+                        <select class="form-control" id="productStatsSku" onchange="renderCustomerProductStats()" disabled>
+                            <option value="">-- 请先选择客户 --</option>
+                        </select>
+                    </div>
+                    <div class="product-stats-filter">
+                        <label for="productStatsPeriodMode">时间范围</label>
+                        <select class="form-control" id="productStatsPeriodMode" onchange="onProductStatsPeriodChange()">
+                            <option value="all">全部时间</option>
+                            <option value="month">按月筛选</option>
+                            <option value="year">按年筛选</option>
+                        </select>
+                    </div>
+                    <div class="product-stats-filter" id="productStatsMonthField" style="display:none;">
+                        <label for="productStatsMonth">月份</label>
+                        <input class="form-control" type="month" id="productStatsMonth" onchange="renderCustomerProductStats()">
+                    </div>
+                    <div class="product-stats-filter" id="productStatsYearField" style="display:none;">
+                        <label for="productStatsYear">年份</label>
+                        <select class="form-control" id="productStatsYear" onchange="renderCustomerProductStats()">
+                            <option value="">-- 请选择年份 --</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="productStatsResult">
+                    <div class="product-stats-empty">请选择客户后查看拿货统计。</div>
+                </div>
+            </div>
+
             <div class="action-bar">
                 <select class="form-control" id="filterCustomer" onchange="renderHistoryTable()" style="max-width:250px;">
                     <option value="">所有客户</option>
@@ -1409,7 +1525,11 @@ function switchTab(tabId, tabElement = null) {
         initOrderPage();
         setTimeout(() => document.getElementById('quickSkuInput')?.focus(), 150);
     }
-    if (tabId === 'history') renderHistoryTable();
+    if (tabId === 'history') {
+        updateHistoryCustomerSelects(loadData(DB_KEYS.customers));
+        initCustomerProductStats();
+        renderHistoryTable();
+    }
     if (tabId === 'data') refreshDataStats();
 }
 
@@ -1677,9 +1797,26 @@ function saveCustomer() {
     updateCustomerSelect();
 }
 
+function updateHistoryCustomerSelects(customers) {
+    const configs = [
+        { id: 'filterCustomer', placeholder: '所有客户' },
+        { id: 'productStatsCustomer', placeholder: '-- 请选择客户 --' }
+    ];
+
+    configs.forEach(config => {
+        const select = document.getElementById(config.id);
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = `<option value="">${config.placeholder}</option>` +
+            customers.map(customer => `<option value="${escapeAttr(customer.id)}">${escapeHtml(customer.name)}</option>`).join('');
+        select.value = customers.some(customer => customer.id === currentValue) ? currentValue : '';
+    });
+}
+
 function renderCustomerGrid() {
     const customers = loadData(DB_KEYS.customers);
     document.getElementById('customerCount').textContent = `共 ${customers.length} 位客户`;
+    updateHistoryCustomerSelects(customers);
 
     const grid = document.getElementById('customerGrid');
     if (customers.length === 0) {
@@ -1706,12 +1843,6 @@ function renderCustomerGrid() {
         </div>
     `).join('');
 
-    // Update history filter select
-    const filterSel = document.getElementById('filterCustomer');
-    const curVal = filterSel.value;
-    filterSel.innerHTML = '<option value="">所有客户</option>' +
-        customers.map(c => `<option value="${escapeAttr(c.id)}">${escapeHtml(c.name)}</option>`).join('');
-    filterSel.value = curVal;
 }
 
 function deleteCustomer(id) {
@@ -2925,6 +3056,198 @@ th{background:#f5f5f5;}.amount-red{color:#c41e3a;font-weight:bold;}
 }
 
 // =============================================
+// Customer product quantity statistics
+// =============================================
+function normalizeSkuKey(sku) {
+    return String(sku ?? '').trim().toUpperCase();
+}
+
+function formatStatsQuantity(quantity) {
+    const value = Number(quantity) || 0;
+    return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, '');
+}
+
+function calculateCustomerProductStats(orders, filters) {
+    const customerId = filters?.customerId || '';
+    const skuKey = filters?.skuKey || '';
+    const periodMode = filters?.periodMode || 'all';
+    const periodValue = filters?.periodValue || '';
+    const rows = [];
+
+    (Array.isArray(orders) ? orders : []).forEach(order => {
+        if (order?.customerId !== customerId) return;
+        const date = normalizeDate(order.date);
+        if (periodMode === 'month' && (!periodValue || date.slice(0, 7) !== periodValue)) return;
+        if (periodMode === 'year' && (!periodValue || date.slice(0, 4) !== periodValue)) return;
+
+        (Array.isArray(order.items) ? order.items : []).forEach(item => {
+            const itemSku = String(item?.sku ?? '').trim();
+            if (!itemSku) return;
+            if (skuKey && normalizeSkuKey(itemSku) !== skuKey) return;
+            const quantity = Number(item.qty);
+            const price = Number(item.price);
+            if (!Number.isFinite(quantity) || !Number.isFinite(price)) return;
+
+            rows.push({
+                orderId: order.id,
+                orderNo: order.orderNo || '-',
+                date: date || String(order.date || ''),
+                sku: itemSku,
+                quantity,
+                price: roundMoney(price),
+                amount: roundMoney(quantity * price),
+                sortTime: recordTimestamp(order)
+            });
+        });
+    });
+
+    rows.sort((a, b) => b.sortTime - a.sortTime || String(b.orderNo).localeCompare(String(a.orderNo), 'zh-CN'));
+    const pickedQuantity = rows.reduce((sum, row) => sum + Math.max(0, row.quantity), 0);
+    const returnedQuantity = rows.reduce((sum, row) => sum + Math.abs(Math.min(0, row.quantity)), 0);
+    const netQuantity = rows.reduce((sum, row) => sum + row.quantity, 0);
+    const totalAmount = roundMoney(rows.reduce((sum, row) => sum + row.amount, 0));
+    const orderCount = new Set(rows.map(row => row.orderId || row.orderNo)).size;
+
+    return { rows, pickedQuantity, returnedQuantity, netQuantity, totalAmount, orderCount };
+}
+
+function setProductStatsPeriodVisibility() {
+    const mode = document.getElementById('productStatsPeriodMode').value;
+    document.getElementById('productStatsMonthField').style.display = mode === 'month' ? '' : 'none';
+    document.getElementById('productStatsYearField').style.display = mode === 'year' ? '' : 'none';
+}
+
+function initCustomerProductStats() {
+    setProductStatsPeriodVisibility();
+    onProductStatsCustomerChange();
+}
+
+function onProductStatsPeriodChange() {
+    setProductStatsPeriodVisibility();
+    renderCustomerProductStats();
+}
+
+function onProductStatsCustomerChange() {
+    const customerId = document.getElementById('productStatsCustomer').value;
+    const skuSelect = document.getElementById('productStatsSku');
+    const yearSelect = document.getElementById('productStatsYear');
+    const monthInput = document.getElementById('productStatsMonth');
+    const orders = loadData(DB_KEYS.orders).filter(order => order.customerId === customerId);
+    const previousSku = skuSelect.value;
+    const previousYear = yearSelect.value;
+    const availableSkus = new Map();
+    const availableDates = [];
+
+    orders.forEach(order => {
+        const date = normalizeDate(order.date);
+        if (date) availableDates.push(date);
+        (Array.isArray(order.items) ? order.items : []).forEach(item => {
+            const label = String(item?.sku ?? '').trim();
+            const key = normalizeSkuKey(label);
+            if (key && !availableSkus.has(key)) availableSkus.set(key, label);
+        });
+    });
+
+    const skuEntries = [...availableSkus.entries()].sort((a, b) => a[1].localeCompare(b[1], 'zh-CN', { numeric: true }));
+    if (!customerId) {
+        skuSelect.innerHTML = '<option value="">-- 请先选择客户 --</option>';
+        skuSelect.disabled = true;
+    } else if (skuEntries.length === 0) {
+        skuSelect.innerHTML = '<option value="">-- 该客户暂无商品明细 --</option>';
+        skuSelect.disabled = true;
+    } else {
+        skuSelect.innerHTML = '<option value="">全部款号</option>' + skuEntries.map(([key, label]) =>
+            `<option value="${escapeAttr(key)}">${escapeHtml(label)}</option>`
+        ).join('');
+        skuSelect.disabled = false;
+        skuSelect.value = availableSkus.has(previousSku) ? previousSku : '';
+    }
+
+    const years = [...new Set(availableDates.map(date => date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
+    yearSelect.innerHTML = years.length
+        ? years.map(year => `<option value="${escapeAttr(year)}">${escapeHtml(year)}年</option>`).join('')
+        : '<option value="">暂无年份</option>';
+    yearSelect.value = years.includes(previousYear) ? previousYear : (years[0] || '');
+
+    const months = [...new Set(availableDates.map(date => date.slice(0, 7)))].sort();
+    monthInput.min = months[0] || '';
+    monthInput.max = months[months.length - 1] || '';
+    if (!months.includes(monthInput.value)) monthInput.value = months[months.length - 1] || '';
+
+    renderCustomerProductStats();
+}
+
+function renderCustomerProductStats() {
+    const result = document.getElementById('productStatsResult');
+    const customerSelect = document.getElementById('productStatsCustomer');
+    const skuSelect = document.getElementById('productStatsSku');
+    const periodMode = document.getElementById('productStatsPeriodMode').value;
+    const customerId = customerSelect.value;
+
+    if (!customerId) {
+        result.innerHTML = '<div class="product-stats-empty">请选择客户后查看拿货统计。</div>';
+        return;
+    }
+
+    const periodValue = periodMode === 'month'
+        ? document.getElementById('productStatsMonth').value
+        : periodMode === 'year'
+            ? document.getElementById('productStatsYear').value
+            : '';
+    const stats = calculateCustomerProductStats(loadData(DB_KEYS.orders), {
+        customerId,
+        skuKey: skuSelect.value,
+        periodMode,
+        periodValue
+    });
+    const customerName = customerSelect.options[customerSelect.selectedIndex]?.text || '所选客户';
+    const skuName = skuSelect.value ? (skuSelect.options[skuSelect.selectedIndex]?.text || skuSelect.value) : '全部款号';
+    const periodLabel = periodMode === 'month'
+        ? (periodValue ? `${periodValue.slice(0, 4)}年${Number(periodValue.slice(5, 7))}月` : '未选择月份')
+        : periodMode === 'year'
+            ? (periodValue ? `${periodValue}年` : '未选择年份')
+            : '全部时间';
+
+    if (stats.rows.length === 0) {
+        result.innerHTML = `<div class="product-stats-empty">${escapeHtml(customerName)}在“${escapeHtml(periodLabel)}”没有“${escapeHtml(skuName)}”的拿货记录。</div>`;
+        return;
+    }
+
+    const detailRows = stats.rows.map((row, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(row.date)}</td>
+            <td><strong>${escapeHtml(row.orderNo)}</strong></td>
+            <td>${escapeHtml(row.sku)}</td>
+            <td style="font-weight:bold;${row.quantity < 0 ? 'color:#dc3545;' : 'color:#333;'}">${formatStatsQuantity(row.quantity)}件</td>
+            <td>¥${roundMoney(row.price).toFixed(2)}</td>
+            <td style="${row.amount < 0 ? 'color:#dc3545;' : ''}">¥${roundMoney(row.amount).toFixed(2)}</td>
+            <td><button class="btn btn-sm btn-info" data-action="view-order" data-id="${escapeAttr(row.orderId)}">查看订单</button></td>
+        </tr>
+    `).join('');
+
+    result.innerHTML = `
+        <div style="margin-top:16px;color:#444;font-size:14px;">
+            <strong>${escapeHtml(customerName)}</strong> · ${escapeHtml(skuName)} · ${escapeHtml(periodLabel)}
+        </div>
+        <div class="product-stats-summary">
+            <div class="product-stats-summary-card">拿货件数<strong>${formatStatsQuantity(stats.pickedQuantity)}件</strong></div>
+            <div class="product-stats-summary-card">退货件数<strong style="color:#dc3545;">${formatStatsQuantity(stats.returnedQuantity)}件</strong></div>
+            <div class="product-stats-summary-card">净拿货件数<strong style="color:${stats.netQuantity < 0 ? '#dc3545' : '#28a745'};">${formatStatsQuantity(stats.netQuantity)}件</strong></div>
+            <div class="product-stats-summary-card">涉及订单<strong>${stats.orderCount}单</strong></div>
+            <div class="product-stats-summary-card">净货款金额<strong>¥${stats.totalAmount.toFixed(2)}</strong></div>
+        </div>
+        <div class="product-stats-table-wrap">
+            <table>
+                <thead><tr><th>序号</th><th>日期</th><th>销售单号</th><th>款号</th><th>数量</th><th>单价</th><th>金额</th><th>操作</th></tr></thead>
+                <tbody>${detailRows}</tbody>
+            </table>
+        </div>
+        <div style="margin-top:8px;color:#777;font-size:12px;">共 ${stats.rows.length} 条商品明细；退货数量按负数记录，净拿货 = 拿货 - 退货。</div>
+    `;
+}
+
+// =============================================
 // History (订单 + 收款统一展示)
 // =============================================
 function renderHistoryTable() {
@@ -3600,14 +3923,16 @@ function installDelegatedHandlers() {
     document.getElementById('quickMatchInfo').addEventListener('click', selectMatchFromEvent);
     document.getElementById('quickMatchInfo').addEventListener('keydown', selectMatchFromEvent);
 
-    document.getElementById('historyTableBody').addEventListener('click', event => {
+    const handleHistoryAction = event => {
         const button = event.target.closest('[data-action][data-id]');
         if (!button) return;
         const id = button.dataset.id;
         if (button.dataset.action === 'view-order') viewOrderDetail(id);
         else if (button.dataset.action === 'print-order') reprintOrderById(id);
         else if (button.dataset.action === 'print-receipt') reprintReceiptById(id);
-    });
+    };
+    document.getElementById('historyTableBody').addEventListener('click', handleHistoryAction);
+    document.getElementById('productStatsResult').addEventListener('click', handleHistoryAction);
 }
 
 // =============================================
